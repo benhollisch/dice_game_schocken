@@ -1,4 +1,5 @@
 from random import randint
+from collections.abc import Sequence
 
 
 def roll_dice(dices_used=3) -> tuple:
@@ -6,7 +7,7 @@ def roll_dice(dices_used=3) -> tuple:
     return normalize(dices)
 
 
-def normalize(dice: tuple) -> tuple:
+def normalize(dice: Sequence) -> tuple:
     return tuple(sorted(dice, reverse=True))
 
 
@@ -46,7 +47,7 @@ def classify(dice) -> tuple:
 # sorted_rolls = sorted(all_rolls, key=classify)
 
 
-def next_states(state: dict, roll: tuple) -> dict:
+def next_states(state: dict, roll: tuple) -> list:
     rolls_left = state["rolls_left"] - 1
 
     ones = roll.count(1)
@@ -103,15 +104,6 @@ class GreedyAllIn:
         # sonst weiter: max Einsen
         continues = [o for o in options if o["action"] == "continue"]
         return max(continues, key=lambda o: o["state"]["held_ones"])
-
-
-# class GreedyAllIn:
-#     def choose(self, options, state, roll):
-#         # Filter nur Continue
-#         continues = [o for o in options if o["action"] == "continue"]
-
-#         # Wähle den mit maximal gehaltenen Einsen
-#         return max(continues, key=lambda o: o["state"]["held_dice"])
 
 
 class ThresholdStrategy:
