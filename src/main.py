@@ -27,6 +27,8 @@ def is_straight(dice) -> bool:
 
 
 def classify(dice) -> tuple:
+    if len(dice) != 3:
+        raise ValueError(f"Expected 3 dice, got {dice}")
     a, b, c = dice
     if is_shock(dice):
         if a == 1:
@@ -66,12 +68,15 @@ def next_states(state: dict, roll: tuple) -> list:
 
         total_ones = ones + k
 
-        for keep in range(0, total_ones + 1):
+        max_keep = total_ones if rolls_left > 0 else 0
+
+        for keep in range(0, max_keep + 1):
             new_states.append(
                 {
                     "held_ones": state["held_ones"] + keep,
                     "rolls_left": rolls_left,
-                    "must_continue": state["must_continue"] or (k > 0),
+                    "must_continue": rolls_left > 1
+                    and (state["must_continue"] or (k > 0)),
                 }
             )
 
@@ -80,6 +85,10 @@ def next_states(state: dict, roll: tuple) -> list:
 
 def decide_after_roll(state, roll, strategy):
     options = []
+
+    if state["rolls_left"] == 1:
+        final = normalize((1,) * state["held_ones"] + roll)
+        return {"action": "stop", "final": final, "rank": classify(final)}
 
     # Stop-Option
     if not state["must_continue"]:
@@ -129,8 +138,8 @@ state = {
 }
 
 while state["rolls_left"] > 0:
-    # roll = roll_dice(3 - state["held_ones"])
-    roll = (1, 1, 1)
+    roll = roll_dice(3 - state["held_ones"])
+    # roll = (6, 1, 1)
 
     decision = decide_after_roll(state, roll, GreedyAllIn())
 
