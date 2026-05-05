@@ -1,5 +1,6 @@
 from random import randint
 from collections.abc import Sequence
+from pprint import pprint
 
 
 def roll_dice(dices_used=3) -> tuple:
@@ -50,6 +51,7 @@ def classify(dice) -> tuple:
 
 
 def next_states(state: dict, roll: tuple) -> list:
+    rolls_used = state["rolls_used"] + 1
     rolls_left = state["rolls_left"] - 1
 
     ones = roll.count(1)
@@ -63,7 +65,7 @@ def next_states(state: dict, roll: tuple) -> list:
 
     new_states = []
     for k in possible_conversions:
-        if k > 0 and rolls_left < 1:
+        if k > 0 and rolls_left < 1:  # optional: '<2' if strikter rule applies
             continue
 
         total_ones = ones + k
@@ -75,8 +77,10 @@ def next_states(state: dict, roll: tuple) -> list:
                 {
                     "held_ones": state["held_ones"] + keep,
                     "rolls_left": rolls_left,
+                    "rolls_used": rolls_used,
                     "must_continue": rolls_left > 1
                     and (state["must_continue"] or (k > 0)),
+                    "dice_to_roll": state["dice_to_roll"] - keep,
                 }
             )
 
@@ -88,12 +92,32 @@ def decide_after_roll(state, roll, strategy):
 
     if state["rolls_left"] == 1:
         final = normalize((1,) * state["held_ones"] + roll)
-        return {"action": "stop", "final": final, "rank": classify(final)}
+        return {
+            "action": "stop",
+            "final": final,
+            "rank": classify(final),
+            "state": {
+                **state,
+                "rolls_used": state["rolls_used"] + 1,
+                "rolls_left": state["rolls_left"] - 1,
+            },
+        }
 
     # Stop-Option
     if not state["must_continue"]:
         final = normalize((1,) * state["held_ones"] + roll)
-        options.append({"action": "stop", "final": final, "rank": classify(final)})
+        options.append(
+            {
+                "action": "stop",
+                "final": final,
+                "rank": classify(final),
+                "state": {
+                    **state,
+                    "rolls_used": state["rolls_used"] + 1,
+                    "rolls_left": state["rolls_left"] - 1,
+                },
+            }
+        )
 
     # Continue-Optionen
     for next_state in next_states(state, roll):
@@ -134,20 +158,27 @@ class ThresholdStrategy:
 state = {
     "held_ones": 0,
     "rolls_left": 3,
+    "rolls_used": 0,
     "must_continue": False,
+    "dice_to_roll": 3,
 }
 
+history = []
+
 while state["rolls_left"] > 0:
-    roll = roll_dice(3 - state["held_ones"])
-    # roll = (6, 1, 1)
+    roll = roll_dice(state["dice_to_roll"])
 
     decision = decide_after_roll(state, roll, GreedyAllIn())
 
+    history.append((state.copy(), roll, decision))
+
     if decision["action"] == "stop":
+        state = decision["state"]
         break
     else:
         state = decision["state"]
 
-# hier ist noch ein bug. roll muss ersetzt werden durch würfel ohne herausgelegte einsen
 final = normalize((1,) * state["held_ones"] + roll)
-print(final, classify(final))
+
+for step in history:
+    pprint(step)
