@@ -1,6 +1,5 @@
-from random import randint
 from collections.abc import Sequence
-from pprint import pprint
+from random import randint
 
 
 def roll_dice(dices_used=3) -> tuple:
@@ -42,12 +41,6 @@ def classify(dice) -> tuple:
         return (2, 6 - a)
     else:
         return (3, (-a, -b, -c))
-
-
-# all_rolls = [
-#     (a, b, c) for a in range(6, 0, -1) for b in range(a, 0, -1) for c in range(b, 0, -1)
-# ]
-# sorted_rolls = sorted(all_rolls, key=classify)
 
 
 def next_states(state: dict, roll: tuple) -> list:
@@ -155,30 +148,69 @@ class ThresholdStrategy:
         return max(continues, key=lambda o: o["state"]["held_ones"])
 
 
-state = {
-    "held_ones": 0,
-    "rolls_left": 3,
-    "rolls_used": 0,
-    "must_continue": False,
-    "dice_to_roll": 3,
-}
+def play_turn(strategy):
+    state = {
+        "held_ones": 0,
+        "rolls_left": 3,
+        "rolls_used": 0,
+        "must_continue": False,
+        "dice_to_roll": 3,
+    }
 
-history = []
+    history = []
 
-while state["rolls_left"] > 0:
-    roll = roll_dice(state["dice_to_roll"])
+    while state["rolls_left"] > 0:
+        roll = roll_dice(state["dice_to_roll"])
 
-    decision = decide_after_roll(state, roll, GreedyAllIn())
+        decision = decide_after_roll(state, roll, strategy)
 
-    history.append((state.copy(), roll, decision))
+        history.append(
+            {
+                "state_before": state.copy(),
+                "roll": roll,
+                "decision": decision["action"],
+                "state_after": decision.get("state"),
+                "final": decision.get("final"),
+                "rank": decision.get("rank"),
+            }
+        )
 
-    if decision["action"] == "stop":
         state = decision["state"]
-        break
-    else:
-        state = decision["state"]
+        if decision["action"] == "stop":
+            return {
+                "final": decision["final"],
+                "rank": decision["rank"],
+                "rolls_used": state["rolls_used"],
+                "history": history,
+            }
 
-final = normalize((1,) * state["held_ones"] + roll)
 
-for step in history:
-    pprint(step)
+def compare_results(a, b):
+    if a["rank"] < b["rank"]:
+        return -1
+
+    if b["rank"] < a["rank"]:
+        return 1
+
+    # Tie-Break: weniger Würfe
+    if a["rolls_used"] < b["rolls_used"]:
+        return -1
+
+    if b["rolls_used"] < a["rolls_used"]:
+        return 1
+
+    # Tie-Break: frühere Position
+    if a["turn_order"] < b["turn_order"]:
+        return -1
+
+    if b["turn_order"] < a["turn_order"]:
+        return 1
+
+    raise RuntimeError("Unreachable")
+
+
+class Game:
+    play_round()
+
+
+result = play_turn(ThresholdStrategy(threshold=(1, 5)))
