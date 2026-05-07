@@ -148,10 +148,10 @@ class ThresholdStrategy:
         return max(continues, key=lambda o: o["state"]["held_ones"])
 
 
-def play_turn(strategy):
+def play_turn(strategy, max_rolls=3):
     state = {
         "held_ones": 0,
-        "rolls_left": 3,
+        "rolls_left": max_rolls,
         "rolls_used": 0,
         "must_continue": False,
         "dice_to_roll": 3,
@@ -240,15 +240,29 @@ class Game:
         self.starting_player = 0
         self.pot = 13
 
-    def play_round(self) -> dict:
-        ordered_players = (
-            self.players[self.starting_player :] + self.players[: self.starting_player]
-        )
+    def active_players(self):
+        # Topf noch nicht leer -> alle spielen
+        if self.pot > 0:
+            return self.players
 
+        return [player for player in self.players if player.lids > 0]
+
+    def play_round(self) -> dict:
+        players = self.active_players()
+        starter = self.players[self.starting_player]
+
+        start_index = players.index(starter)
+        ordered_players = players[start_index:] + players[:start_index]
+
+        round_max_rolls = None
         results = []
 
         for i, player in enumerate(ordered_players):
-            result = play_turn(player.strategy)
+            if round_max_rolls is None:
+                result = play_turn(player.strategy, 3)
+                round_max_rolls = result["rolls_used"]
+            else:
+                result = play_turn(player.strategy, round_max_rolls)
 
             result["player"] = player.name
             result["player_index"] = self.players.index(player)
@@ -320,6 +334,14 @@ class Game:
         winner.lids -= transfer
         loser.lids += transfer
 
+    def is_game_over(self):
+        if self.pot > 0:
+            return False
+
+        active = [p for p in self.players if p.lids > 0]
+
+        return len(active) <= 1
+
 
 def print_round_summary(game, round_result):
     print("\nRound Summary")
@@ -328,7 +350,7 @@ def print_round_summary(game, round_result):
         print(r["player"], r["final"], r["rank"], f"({r['rolls_used']} rolls)")
 
     print(
-        "Winner:",
+        "\nWinner:",
         round_result["winner"]["player"],
         round_result["winner"]["final"],
     )
@@ -338,11 +360,12 @@ def print_round_summary(game, round_result):
         round_result["loser"]["player"],
         round_result["loser"]["final"],
     )
+    print("Round max rolls:", max(r["rolls_used"] for r in round_result["results"]))
+    print("\nPot:", game.pot)
 
-    print("Pot:", game.pot)
-
-    for player in game.players:
+    for player in game.active_players():
         print(f"{player.name}: {player.lids} lids")
+    print("---------------------------------------")
 
 
 players = [
@@ -353,6 +376,11 @@ players = [
 
 game = Game(players)
 
-for _ in range(3):
+while not game.is_game_over():
     round_result = game.play_round()
     print_round_summary(game, round_result)
+
+loser = next(player for player in game.players if player.lids > 0)
+
+print("\nGame Over")
+print(f"Loser: {loser.name}")
