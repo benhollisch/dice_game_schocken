@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from random import randint
+from collections import Counter
 
 
 def roll_dice(dices_used=3) -> tuple:
@@ -172,6 +173,12 @@ def play_turn(strategy, max_rolls=3):
                 "state_after": decision.get("state"),
                 "final": decision.get("final"),
                 "rank": decision.get("rank"),
+                "held_ones": state["held_ones"],
+                "public_state": (
+                    normalize((1,) * state["held_ones"] + roll)
+                    if state["rolls_left"] > 1
+                    else None
+                ),
             }
         )
 
@@ -368,19 +375,38 @@ def print_round_summary(game, round_result):
     print("---------------------------------------")
 
 
+def simulate_games(players, n_games=10):
+    loser_counts = Counter()
+    rounds_per_game = []
+
+    for _ in range(n_games):
+        game = Game(players)
+
+        rounds = 0
+
+        while not game.is_game_over():
+            # round_result = game.play_round()
+            # print_round_summary(game, round_result)
+            game.play_round()
+            rounds += 1
+
+        loser = next(player for player in game.players if player.lids > 0)
+
+        loser_counts[loser.name] += 1
+        rounds_per_game.append(rounds)
+
+    return {
+        "loser_counts": loser_counts,
+        "avg_rounds": sum(rounds_per_game) / len(rounds_per_game),
+    }
+
+
 players = [
     Player("A", GreedyAllIn()),
     Player("B", ThresholdStrategy((1, 4))),
     Player("C", ThresholdStrategy((2, 2))),
 ]
 
-game = Game(players)
+results = simulate_games(players=players, n_games=5)
 
-while not game.is_game_over():
-    round_result = game.play_round()
-    print_round_summary(game, round_result)
-
-loser = next(player for player in game.players if player.lids > 0)
-
-print("\nGame Over")
-print(f"Loser: {loser.name}")
+print(results)
