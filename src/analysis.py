@@ -32,3 +32,12 @@
 
 # print("\nGame Over")
 # print(f"Loser: {loser.name}")
+
+choose(options, context) mit context = {
+round_state
+opponents
+pot
+current_best
+turn_order
+...
+}

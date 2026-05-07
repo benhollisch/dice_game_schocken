@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from random import randint
 from collections import Counter
+from tqdm import tqdm
 
 
 def roll_dice(dices_used=3) -> tuple:
@@ -81,7 +82,7 @@ def next_states(state: dict, roll: tuple) -> list:
     return new_states
 
 
-def decide_after_roll(state, roll, strategy):
+def decide_after_roll(state, roll, strategy, public_table_state=None):
     options = []
 
     if state["rolls_left"] == 1:
@@ -117,11 +118,11 @@ def decide_after_roll(state, roll, strategy):
     for next_state in next_states(state, roll):
         options.append({"action": "continue", "state": next_state})
 
-    return strategy.choose(options, state, roll)
+    return strategy.choose(options, state, roll, public_table_state)
 
 
 class GreedyAllIn:
-    def choose(self, options, state, roll):
+    def choose(self, options, state, roll, public_table_state=None):
         # Stop-Option prüfen
         stop_option = next((o for o in options if o["action"] == "stop"), None)
 
@@ -137,7 +138,7 @@ class ThresholdStrategy:
     def __init__(self, threshold):
         self.threshold = threshold
 
-    def choose(self, options, state, roll):
+    def choose(self, options, state, roll, public_table_state):
         for o in options:
             if o["action"] == "stop" and o["rank"] <= self.threshold:
                 return o
@@ -149,7 +150,11 @@ class ThresholdStrategy:
         return max(continues, key=lambda o: o["state"]["held_ones"])
 
 
-def play_turn(strategy, max_rolls=3):
+class DynamicTresholdStrategy:
+    pass
+
+
+def play_turn(strategy, max_rolls=3, public_table_state=None):
     state = {
         "held_ones": 0,
         "rolls_left": max_rolls,
@@ -263,13 +268,35 @@ class Game:
 
         round_max_rolls = None
         results = []
+        public_table_state = []
 
         for i, player in enumerate(ordered_players):
             if round_max_rolls is None:
-                result = play_turn(player.strategy, 3)
+                result = play_turn(
+                    player.strategy, 3, public_table_state=public_table_state
+                )
                 round_max_rolls = result["rolls_used"]
             else:
-                result = play_turn(player.strategy, round_max_rolls)
+                result = play_turn(
+                    player.strategy,
+                    round_max_rolls,
+                    public_table_state=public_table_state,
+                )
+
+            visible_state = None
+
+            for step in result["history"]:
+                if step["public_state"] is not None:
+                    visible_state = step["public_state"]
+
+            public_table_state.append(
+                {
+                    "player": player.name,
+                    "turn_order": i,
+                    "visible_state": visible_state,
+                    "is_closed": visible_state is not None,
+                }
+            )
 
             result["player"] = player.name
             result["player_index"] = self.players.index(player)
@@ -379,8 +406,10 @@ def simulate_games(players, n_games=10):
     loser_counts = Counter()
     rounds_per_game = []
 
-    for _ in range(n_games):
-        game = Game(players)
+    for _ in tqdm(range(n_games)):
+        # for _ in range(n_games):
+        fresh_players = [Player(p.name, p.strategy) for p in players]
+        game = Game(fresh_players)
 
         rounds = 0
 
@@ -397,16 +426,20 @@ def simulate_games(players, n_games=10):
 
     return {
         "loser_counts": loser_counts,
+        "loser_shares": {
+            key: round(loser_counts[key] / n_games, 4) for key in loser_counts
+        },
         "avg_rounds": sum(rounds_per_game) / len(rounds_per_game),
     }
 
 
 players = [
     Player("A", GreedyAllIn()),
-    Player("B", ThresholdStrategy((1, 4))),
-    Player("C", ThresholdStrategy((2, 2))),
+    # Player("B", ThresholdStrategy((1, 4))),
+    # Player("C", ThresholdStrategy((2, 2))),
+    Player("D", ThresholdStrategy((3, (-6, -5, -2)))),
 ]
 
-results = simulate_games(players=players, n_games=5)
+results = simulate_games(players=players, n_games=1000000)
 
 print(results)
