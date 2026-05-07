@@ -187,30 +187,90 @@ def play_turn(strategy):
 
 def compare_results(a, b):
     if a["rank"] < b["rank"]:
-        return -1
+        return a
 
     if b["rank"] < a["rank"]:
-        return 1
+        return b
 
     # Tie-Break: weniger Würfe
     if a["rolls_used"] < b["rolls_used"]:
-        return -1
+        return a
 
     if b["rolls_used"] < a["rolls_used"]:
-        return 1
+        return b
 
     # Tie-Break: frühere Position
     if a["turn_order"] < b["turn_order"]:
-        return -1
+        return a
 
     if b["turn_order"] < a["turn_order"]:
-        return 1
+        return b
 
-    raise RuntimeError("Unreachable")
+    raise RuntimeError("Impossible tie")
+
+
+class Player:
+    def __init__(self, name, strategy):
+        self.name = name
+        self.strategy = strategy
 
 
 class Game:
-    play_round()
+    def __init__(self, players: list):
+        self.players = players
+        self.starting_player = 0
+
+    def play_round(self) -> list:
+        ordered_players = (
+            self.players[self.starting_player :] + self.players[: self.starting_player]
+        )
+
+        results = []
+
+        for i, player in enumerate(ordered_players):
+            result = play_turn(player.strategy)
+
+            result["player"] = player.name
+            result["player_index"] = self.players.index(player)
+            result["turn_order"] = i
+
+            results.append(result)
+
+        return results
+
+    def determine_loser(self, results: list):
+        loser = results[0]
+
+        for result in results[1:]:
+            winner = compare_results(result, loser)
+
+            if winner is loser:
+                loser = result
+
+        return loser
+
+    def determine_winner(self, results: list):
+        winner = results[0]
+
+        for result in results[1:]:
+            winner = compare_results(result, winner)
+
+        return winner
 
 
-result = play_turn(ThresholdStrategy(threshold=(1, 5)))
+players = [
+    Player("A", GreedyAllIn()),
+    Player("B", ThresholdStrategy((1, 4))),
+    Player("C", ThresholdStrategy((2, 2))),
+]
+
+game = Game(players)
+
+results = game.play_round()
+
+for r in results:
+    print(r["player"], r["final"], r["rank"], r["rolls_used"], r["turn_order"])
+
+loser = game.determine_loser(results)
+winner = game.determine_winner(results)
+print(f"verlierer ist: {loser["player"]} \ngewinner ist: {winner["player"]}")
