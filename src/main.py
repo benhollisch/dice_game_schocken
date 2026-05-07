@@ -209,18 +209,38 @@ def compare_results(a, b):
     raise RuntimeError("Impossible tie")
 
 
+def lid_value(roll):
+    a, b, c = normalize(roll)
+
+    if roll == (1, 1, 1):
+        return "shock_out"
+
+    if is_shock(roll):
+        return a
+
+    if is_general(roll):
+        return 3
+
+    if is_straight(roll):
+        return 2
+
+    return 1
+
+
 class Player:
     def __init__(self, name, strategy):
         self.name = name
         self.strategy = strategy
+        self.lids = 0
 
 
 class Game:
     def __init__(self, players: list):
         self.players = players
         self.starting_player = 0
+        self.pot = 13
 
-    def play_round(self) -> list:
+    def play_round(self) -> dict:
         ordered_players = (
             self.players[self.starting_player :] + self.players[: self.starting_player]
         )
@@ -236,7 +256,16 @@ class Game:
 
             results.append(result)
 
-        return results
+        winner = self.determine_winner(results)
+        loser = self.determine_loser(results)
+        self.resolve_round(winner, loser)
+        self.starting_player = loser["player_index"]
+
+        return {
+            "results": results,
+            "winner": winner,
+            "loser": loser,
+        }
 
     def determine_loser(self, results: list):
         loser = results[0]
@@ -257,6 +286,64 @@ class Game:
 
         return winner
 
+    def resolve_round(self, winner_result, loser_result):
+        winner = self.players[winner_result["player_index"]]
+        loser = self.players[loser_result["player_index"]]
+
+        value = lid_value(winner_result["final"])
+
+        # Schock Out
+        if value == "shock_out":
+            total = self.pot
+
+            for player in self.players:
+                total += player.lids
+                player.lids = 0
+
+            self.pot = 0
+            loser.lids += total
+
+            return
+
+        # Pot zuerst
+        if self.pot > 0:
+            transfer = min(self.pot, value)
+
+            self.pot -= transfer
+            loser.lids += transfer
+
+            return
+
+        # Spieler zu Spieler
+        transfer = min(winner.lids, value)
+
+        winner.lids -= transfer
+        loser.lids += transfer
+
+
+def print_round_summary(game, round_result):
+    print("\nRound Summary")
+
+    for r in round_result["results"]:
+        print(r["player"], r["final"], r["rank"], f"({r['rolls_used']} rolls)")
+
+    print(
+        "Winner:",
+        round_result["winner"]["player"],
+        round_result["winner"]["final"],
+    )
+
+    print(
+        "Loser:",
+        round_result["loser"]["player"],
+        round_result["loser"]["final"],
+    )
+
+    print("Pot:", game.pot)
+
+    for player in game.players:
+        print(f"{player.name}: {player.lids} lids")
+
 
 players = [
     Player("A", GreedyAllIn()),
@@ -266,11 +353,6 @@ players = [
 
 game = Game(players)
 
-results = game.play_round()
-
-for r in results:
-    print(r["player"], r["final"], r["rank"], r["rolls_used"], r["turn_order"])
-
-loser = game.determine_loser(results)
-winner = game.determine_winner(results)
-print(f"verlierer ist: {loser["player"]} \ngewinner ist: {winner["player"]}")
+for _ in range(3):
+    round_result = game.play_round()
+    print_round_summary(game, round_result)
