@@ -60,6 +60,7 @@ def next_states(state: dict, roll: tuple) -> list:
 
     new_states = []
     for k in possible_conversions:
+        # Conversion only feasible if player may continue
         if k > 0 and rolls_left < 1:  # optional: '<2' if strikter rule applies
             continue
 
@@ -68,13 +69,22 @@ def next_states(state: dict, roll: tuple) -> list:
         max_keep = total_ones if rolls_left > 0 else 0
 
         for keep in range(0, max_keep + 1):
+            held_ones = state["held_ones"] + keep
+
+            if keep == 0:
+                visible_state = None
+            else:
+                visible_state = (1,) * held_ones
+
             new_states.append(
                 {
-                    "held_ones": state["held_ones"] + keep,
+                    "held_ones": held_ones,
                     "rolls_left": rolls_left,
                     "rolls_used": rolls_used,
-                    "must_continue": rolls_left > 1
-                    and (state["must_continue"] or (k > 0)),
+                    "visible_state": visible_state,
+                    "must_continue": (
+                        rolls_left > 1 and (state["must_continue"] or (k > 0))
+                    ),
                     "dice_to_roll": state["dice_to_roll"] - keep,
                 }
             )
@@ -85,8 +95,9 @@ def next_states(state: dict, roll: tuple) -> list:
 def decide_after_roll(state, roll, strategy, public_table_state=None):
     options = []
 
+    final = normalize((1,) * state["held_ones"] + roll)
+
     if state["rolls_left"] == 1:
-        final = normalize((1,) * state["held_ones"] + roll)
         return {
             "action": "stop",
             "final": final,
@@ -95,12 +106,13 @@ def decide_after_roll(state, roll, strategy, public_table_state=None):
                 **state,
                 "rolls_used": state["rolls_used"] + 1,
                 "rolls_left": state["rolls_left"] - 1,
+                "visible_state": state["visible_state"],
             },
         }
 
     # Stop-Option
     if not state["must_continue"]:
-        final = normalize((1,) * state["held_ones"] + roll)
+
         options.append(
             {
                 "action": "stop",
@@ -110,6 +122,7 @@ def decide_after_roll(state, roll, strategy, public_table_state=None):
                     **state,
                     "rolls_used": state["rolls_used"] + 1,
                     "rolls_left": state["rolls_left"] - 1,
+                    "visible_state": final,
                 },
             }
         )
@@ -159,6 +172,7 @@ def play_turn(strategy, max_rolls=3, public_table_state=None):
         "held_ones": 0,
         "rolls_left": max_rolls,
         "rolls_used": 0,
+        "visible_state": None,
         "must_continue": False,
         "dice_to_roll": 3,
     }
@@ -168,22 +182,18 @@ def play_turn(strategy, max_rolls=3, public_table_state=None):
     while state["rolls_left"] > 0:
         roll = roll_dice(state["dice_to_roll"])
 
-        decision = decide_after_roll(state, roll, strategy)
+        decision = decide_after_roll(state, roll, strategy, public_table_state)
 
         history.append(
             {
                 "state_before": state.copy(),
+                "roll_number": state["rolls_used"] + 1,
                 "roll": roll,
                 "decision": decision["action"],
                 "state_after": decision.get("state"),
                 "final": decision.get("final"),
                 "rank": decision.get("rank"),
-                "held_ones": state["held_ones"],
-                "public_state": (
-                    normalize((1,) * state["held_ones"] + roll)
-                    if state["rolls_left"] > 1
-                    else None
-                ),
+                "visible_state": decision["state"]["visible_state"],
             }
         )
 
@@ -192,9 +202,21 @@ def play_turn(strategy, max_rolls=3, public_table_state=None):
             return {
                 "final": decision["final"],
                 "rank": decision["rank"],
-                "rolls_used": state["rolls_used"],
+                "rolls_used": decision["state"]["rolls_used"],
+                "visible_state": decision["state"]["visible_state"],
                 "history": history,
             }
+
+
+def worst_public_rank(public_table_state):
+    public_ranks = [
+        p["public_rank"] for p in public_table_state if p["public_rank"] is not None
+    ]
+
+    if not public_ranks:
+        return None
+
+    return max(public_ranks)
 
 
 def compare_results(a, b):
@@ -283,18 +305,12 @@ class Game:
                     public_table_state=public_table_state,
                 )
 
-            visible_state = None
-
-            for step in result["history"]:
-                if step["public_state"] is not None:
-                    visible_state = step["public_state"]
-
             public_table_state.append(
                 {
                     "player": player.name,
                     "turn_order": i,
-                    "visible_state": visible_state,
-                    "is_closed": visible_state is not None,
+                    "visible_state": result["visible_state"],
+                    "is_closed": result["rolls_used"] == round_max_rolls,
                 }
             )
 
@@ -313,6 +329,7 @@ class Game:
             "results": results,
             "winner": winner,
             "loser": loser,
+            "public_table_state": public_table_state,
         }
 
     def determine_loser(self, results: list):
@@ -381,7 +398,19 @@ def print_round_summary(game, round_result):
     print("\nRound Summary")
 
     for r in round_result["results"]:
-        print(r["player"], r["final"], r["rank"], f"({r['rolls_used']} rolls)")
+        print(
+            r["player"],
+            r["final"],
+            r["rank"],
+            f"({r['rolls_used']} rolls)",
+            r["visible_state"],
+        )
+        for step in r["history"]:
+            print(
+                f"  Roll {step['roll_number']}: "
+                f"{step['roll']} "
+                f"-> visible: {step['visible_state']}"
+            )
 
     print(
         "\nWinner:",
@@ -414,9 +443,11 @@ def simulate_games(players, n_games=10):
         rounds = 0
 
         while not game.is_game_over():
-            # round_result = game.play_round()
-            # print_round_summary(game, round_result)
-            game.play_round()
+            if n_games <= 5:
+                round_result = game.play_round()
+                print_round_summary(game, round_result)
+            else:
+                game.play_round()
             rounds += 1
 
         loser = next(player for player in game.players if player.lids > 0)
@@ -435,11 +466,8 @@ def simulate_games(players, n_games=10):
 
 players = [
     Player("A", GreedyAllIn()),
-    # Player("B", ThresholdStrategy((1, 4))),
-    # Player("C", ThresholdStrategy((2, 2))),
-    Player("D", ThresholdStrategy((3, (-6, -5, -2)))),
+    Player("B", ThresholdStrategy((3, (-6, -5, -5)))),
 ]
 
-results = simulate_games(players=players, n_games=1000000)
-
+results = simulate_games(players=players, n_games=5)
 print(results)
