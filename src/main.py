@@ -71,10 +71,10 @@ def next_states(state: dict, roll: tuple) -> list:
         for keep in range(0, max_keep + 1):
             held_ones = state["held_ones"] + keep
 
-            if keep == 0:
-                visible_state = None
-            else:
+            if held_ones > 0:
                 visible_state = (1,) * held_ones
+            else:
+                visible_state = None
 
             new_states.append(
                 {
@@ -134,6 +134,29 @@ def decide_after_roll(state, roll, strategy, public_table_state=None):
     return strategy.choose(options, state, roll, public_table_state)
 
 
+def danger_score(visible_state):
+    if visible_state is None:
+        return 0.5
+
+    if len(visible_state) == 1:
+        return 0.8
+
+    if len(visible_state) == 2:
+        return 0.95
+
+    return 0.2
+
+
+def total_danger(public_table_state):
+    safe_probability = 1.0
+    for p in public_table_state:
+        d = danger_score(p["visible_state"])
+        safe_probability *= 1 - d
+
+    return 1 - safe_probability
+
+
+# absolute strategies
 class GreedyAllIn:
     def choose(self, options, state, roll, public_table_state=None):
         # Stop-Option prüfen
@@ -147,24 +170,122 @@ class GreedyAllIn:
         return max(continues, key=lambda o: o["state"]["held_ones"])
 
 
-class ThresholdStrategy:
+class StaticThresholdStrategy:
     def __init__(self, threshold):
         self.threshold = threshold
 
-    def choose(self, options, state, roll, public_table_state):
-        for o in options:
-            if o["action"] == "stop" and o["rank"] <= self.threshold:
-                return o
+    def choose(self, options, state, roll):
+        # Stop-Option prüfen
+        stop_option = next((o for o in options if o["action"] == "stop"), None)
+
+        if stop_option is not None and stop_option["rank"] <= self.threshold:
+            return stop_option
 
         # sonst weiter wie greedy
         continues = [o for o in options if o["action"] == "continue"]
         if not continues:
-            return [o for o in options if o["action"] == "stop"][0]
+            return stop_option
+
         return max(continues, key=lambda o: o["state"]["held_ones"])
 
 
-class DynamicTresholdStrategy:
-    pass
+# relative strategies
+class PublicThresholdStrategy:
+    def choose(self, options, state, roll, public_table_state=None):
+        stop_option = next((o for o in options if o["action"] == "stop"), None)
+        worst_public = worst_public_rank(public_table_state)
+        if stop_option is not None:
+            if worst_public is not None and stop_option["rank"] < worst_public:
+                return stop_option
+
+        # sonst weiter wie greedy
+        continues = [o for o in options if o["action"] == "continue"]
+        if not continues:
+            return stop_option
+
+        return max(continues, key=lambda o: o["state"]["held_ones"])
+
+
+class AdaptiveGreedyStrategy:
+    def choose(self, options, state, roll, public_table_state=None):
+        # Stop-Option prüfen
+        stop_option = next((o for o in options if o["action"] == "stop"), None)
+        worst_public = worst_public_rank(public_table_state)
+
+        # no public information availabe -> play aggressive
+        if worst_public is None:
+            if stop_option is not None and stop_option["rank"] == (0, 0):
+                return stop_option
+
+            continues = [o for o in options if o["action"] == "continue"]
+            if not continues:
+                return stop_option
+
+            return max(continues, key=lambda o: o["state"]["held_ones"])
+
+        # public information available -> only avoid sure defeat
+        if stop_option is not None and stop_option["rank"] < worst_public:
+            return stop_option
+
+        continues = [o for o in options if o["action"] == "continue"]
+        if not continues:
+            return stop_option
+
+        return max(continues, key=lambda o: o["state"]["held_ones"])
+
+
+class HybridThresholdStrategy:
+    def __init__(self, threshold):
+        self.threshold = threshold
+
+    def choose(self, options, state, roll, public_table_state=None):
+        # Stop-Option prüfen
+        stop_option = next((o for o in options if o["action"] == "stop"), None)
+        worst_public = worst_public_rank(public_table_state)
+        if worst_public is None:
+            if stop_option is not None and stop_option["rank"] <= self.threshold:
+                return stop_option
+
+        # Öffentliche Zielmarke vorhanden:
+        # -> nur nicht verlieren
+        else:
+            if stop_option is not None and stop_option["rank"] < worst_public:
+                return stop_option
+
+        # sonst weiter wie greedy
+        continues = [o for o in options if o["action"] == "continue"]
+        if not continues:
+            return stop_option
+
+        return max(continues, key=lambda o: o["state"]["held_ones"])
+
+
+class DangerAwareStrategy:
+
+    def __init__(self, threshold, risk_aversion=0.5):
+        self.threshold = threshold
+        self.risk_aversion = risk_aversion
+
+    def choose(self, options, state, roll, public_table_state):
+        stop_option = next((o for o in options if o["action"] == "stop"), None)
+        continues = [o for o in options if o["action"] == "continue"]
+
+        if stop_option is None:
+            return max(continues, key=lambda o: o["state"]["held_ones"])
+
+        my_rank = stop_option["rank"]
+
+        # Basis-Threshold
+        if my_rank > self.threshold:
+            return max(continues, key=lambda o: o["state"]["held_ones"])
+
+        # Gefahrenniveau abschätzen
+        # Hohe Gefahr -> aggressiver bleiben
+        if total_danger(public_table_state) > self.risk_aversion:
+            return max(continues, key=lambda o: o["state"]["held_ones"])
+
+        # sonst stoppen
+        return stop_option
 
 
 def play_turn(strategy, max_rolls=3, public_table_state=None):
@@ -210,7 +331,9 @@ def play_turn(strategy, max_rolls=3, public_table_state=None):
 
 def worst_public_rank(public_table_state):
     public_ranks = [
-        p["public_rank"] for p in public_table_state if p["public_rank"] is not None
+        classify(p["visible_state"])
+        for p in public_table_state
+        if p["visible_state"] is not None and len(p["visible_state"]) == 3
     ]
 
     if not public_ranks:
@@ -456,18 +579,22 @@ def simulate_games(players, n_games=10):
         rounds_per_game.append(rounds)
 
     return {
-        "loser_counts": loser_counts,
+        "n_games": n_games,
+        # "loser_counts": {key: loser_counts[key] for key in sorted(loser_counts)},
         "loser_shares": {
-            key: round(loser_counts[key] / n_games, 4) for key in loser_counts
+            key: round(loser_counts[key] / n_games, 4) for key in sorted(loser_counts)
         },
         "avg_rounds": sum(rounds_per_game) / len(rounds_per_game),
     }
 
 
 players = [
-    Player("A", GreedyAllIn()),
-    Player("B", ThresholdStrategy((3, (-6, -5, -5)))),
+    # Player("A", GreedyAllIn()),
+    # Player("B", PublicThresholdStrategy()),
+    Player("C1", StaticThresholdStrategy(threshold=(2, 3))),
+    Player("C2", StaticThresholdStrategy(threshold=(2, 3))),
+    # Player("D", AdaptiveGreedyStrategy()),
 ]
 
-results = simulate_games(players=players, n_games=5)
+results = simulate_games(players=players, n_games=1000000)
 print(results)
