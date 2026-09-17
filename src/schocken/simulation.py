@@ -81,7 +81,7 @@ def simulate_games(players: list[Player], n_games: int = 10) -> dict:
     return {
         "n_games": n_games,
         "loser_shares": {
-            key: round(loser_counts[key] / n_games, 4) for key in sorted(loser_counts)
+            key: loser_counts[key] / n_games for key in sorted(loser_counts)
         },
         "avg_rounds": sum(rounds_per_game) / len(rounds_per_game),
     }
