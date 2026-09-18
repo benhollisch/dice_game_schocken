@@ -5,7 +5,7 @@ Enthält Strategien die unabhängig vom öffentlichen Tischzustand entscheiden.
 """
 
 from schocken.types import GameState, Decision, PublicPlayerState
-from schocken.strategies.base import BaseStrategy
+from schocken.strategies.base import BaseStrategy, parse_threshold
 
 
 class GreedyAllIn(BaseStrategy):
@@ -43,7 +43,12 @@ class StaticThresholdStrategy(BaseStrategy):
     """
 
     def __init__(self, threshold: tuple[int, ...]):
-        self.threshold = threshold
+        """
+        Args:
+            threshold: Schwelle als Würfelbild oder als Rang, unterhalb derer
+                gestoppt wird.
+        """
+        self.threshold = parse_threshold(threshold)
 
     def choose(
         self,

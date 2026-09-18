@@ -109,6 +109,54 @@ def rank_distribution(
     return result
 
 
+def joint_distribution(
+    state: GameState,
+    strategy: BaseStrategy,
+    cache: dict | None = None,
+) -> dict[tuple[tuple[int, ...], int], float]:
+    """
+    Berechnet die gemeinsame Verteilung über Endrang und verbrauchte Wurfzahl.
+
+    Im Unterschied zu rank_distribution wird die Wurfzahl nicht wegaggregiert,
+    da sie für die Auflösung von Gleichständen benötigt wird.
+
+    TODO: decide_after_roll wird ohne public_table_state aufgerufen. Für
+    reaktive Strategien entspricht die Verteilung daher nicht dem tatsächlichen
+    Spielverhalten.
+
+    Args:
+        state: Zustand unmittelbar vor dem nächsten Wurf.
+        strategy: Politik die an Entscheidungsknoten angewandt wird.
+        cache: Optionaler Cache für wiederkehrende Teilzustände.
+
+    Returns:
+        Dictionary von (Rang, Wurfzahl) auf Wahrscheinlichkeit.
+    """
+    if cache is None:
+        cache = {}
+
+    key = (_cache_key(state), state["rolls_used"])
+    if key in cache:
+        return cache[key]
+
+    distribution: dict[tuple[tuple[int, ...], int], float] = defaultdict(float)
+
+    for roll, probability in roll_distribution(state["dice_to_roll"]).items():
+        decision = decide_after_roll(state, roll, strategy)
+
+        if decision["action"] == "stop":
+            outcome = (decision["rank"], decision["state"]["rolls_used"])
+            distribution[outcome] += probability
+        else:
+            sub = joint_distribution(decision["state"], strategy, cache)
+            for outcome, p in sub.items():
+                distribution[outcome] += probability * p
+
+    result = dict(distribution)
+    cache[key] = result
+    return result
+
+
 def increment_distribution(n_dice: int) -> dict[int, float]:
     """
     Berechnet die Verteilung des Einsen-Zuwachses in einem einzelnen Wurf.
@@ -263,6 +311,41 @@ def survival_probability(
     ranks, prefix = table
     index = bisect_right(ranks, rank)
     return prefix[-1] - prefix[index]
+
+
+def survival_probability_with_ties(
+    distribution: dict[tuple[tuple[int, ...], int], float],
+    rank: tuple[int, ...],
+    rolls_used: int,
+    acts_first: bool,
+) -> float:
+    """
+    Berechnet die Wahrscheinlichkeit, gegen einen Gegner nicht zu verlieren.
+
+    Berücksichtigt beide Tie-Break-Stufen: Bei gleichem Rang gewinnt die
+    geringere Wurfzahl, bei gleicher Wurfzahl die frühere Position.
+
+    Args:
+        distribution: Gemeinsame Verteilung aus joint_distribution().
+        rank: Eigener Rang.
+        rolls_used: Eigene verbrauchte Wurfzahl.
+        acts_first: Ob man vor dem betrachteten Gegner an der Reihe war.
+
+    Returns:
+        Wahrscheinlichkeit zwischen 0 und 1.
+    """
+    total = 0.0
+
+    for (opponent_rank, opponent_rolls), p in distribution.items():
+        if opponent_rank > rank:
+            total += p
+        elif opponent_rank == rank:
+            if opponent_rolls > rolls_used:
+                total += p
+            elif opponent_rolls == rolls_used and acts_first:
+                total += p
+
+    return total
 
 
 def opponent_tables(

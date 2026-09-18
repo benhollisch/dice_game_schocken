@@ -8,6 +8,7 @@ zur Bewertung des öffentlichen Tischzustands.
 from abc import ABC, abstractmethod
 from schocken.types import GameState, Decision, PublicPlayerState
 from schocken.classification import classify
+from schocken.utils import normalize
 
 
 class BaseStrategy(ABC):
@@ -98,3 +99,27 @@ def total_danger(public_table_state: list[PublicPlayerState]) -> float:
         safe_probability *= 1 - d
 
     return 1 - safe_probability
+
+
+def parse_threshold(threshold: tuple[int, ...]) -> tuple[int, ...]:
+    """
+    Normalisiert eine Threshold-Angabe auf einen Rang.
+
+    Akzeptiert sowohl Würfelbilder als auch bereits klassifizierte Ränge. Ein
+    Tupel aus drei Augenzahlen zwischen 1 und 6 wird als Würfelbild
+    interpretiert und klassifiziert; alles andere wird unverändert
+    zurückgegeben.
+
+    Die Unterscheidung ist eindeutig, da Ränge nie diese Form haben: Sie
+    beginnen mit einer Komponente aus {0, 1, 2, 3} und haben entweder Länge
+    zwei oder Länge vier mit negativen Folgekomponenten.
+
+    Args:
+        threshold: Schwelle als Würfelbild oder als Rang.
+
+    Returns:
+        Der zugehörige Rang.
+    """
+    if len(threshold) == 3 and all(1 <= value <= 6 for value in threshold):
+        return classify(normalize(threshold))
+    return threshold

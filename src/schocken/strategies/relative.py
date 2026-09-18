@@ -5,7 +5,12 @@ Enthält Strategien die den öffentlichen Tischzustand in ihre Entscheidung einb
 """
 
 from schocken.types import GameState, Decision, PublicPlayerState
-from schocken.strategies.base import BaseStrategy, worst_public_rank, total_danger
+from schocken.strategies.base import (
+    BaseStrategy,
+    worst_public_rank,
+    total_danger,
+    parse_threshold,
+)
 
 
 class PublicThresholdStrategy(BaseStrategy):
@@ -82,7 +87,7 @@ class HybridThresholdStrategy(BaseStrategy):
     """
 
     def __init__(self, threshold: tuple[int, ...]):
-        self.threshold = threshold
+        self.threshold = parse_threshold(threshold)
 
     def choose(
         self,
@@ -122,7 +127,7 @@ class DangerAwareStrategy(BaseStrategy):
     """
 
     def __init__(self, threshold: tuple[int, ...], risk_aversion: float = 0.5):
-        self.threshold = threshold
+        self.threshold = parse_threshold(threshold)
         self.risk_aversion = risk_aversion
 
     def choose(

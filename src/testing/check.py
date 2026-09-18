@@ -1,3 +1,8 @@
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from schocken.distribution import (
     roll_distribution,
     rank_distribution,
@@ -79,4 +84,4 @@ print("Verteilung der Einsen-Zuwächse in einem Wurf mit 3 Würfeln")
 print("ohne Konversion:", ones_distribution(3, 3, with_conversion=False)[3])
 print("Erwartet:       ", (91 / 216) ** 3)
 print("mit Konversion: ", ones_distribution(3, 3)[3])
-print("Erwartet:       ", "8.6 %")
+print("Erwartet:       ", 54271 / 629856)
