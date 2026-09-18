@@ -15,6 +15,6 @@ players = [
     Player("C3", StaticThresholdStrategy(threshold=(2, 3))),
 ]
 
-results = simulate_games(players=players, n_games=10000)
+results = simulate_games(players=players, n_games=100)
 print(results)
 print_summary(results)
