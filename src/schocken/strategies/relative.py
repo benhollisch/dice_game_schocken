@@ -1,16 +1,16 @@
 """
 Relative Strategien für das Schocken-Spiel.
 
-Enthält Strategien die den öffentlichen Tischzustand in ihre Entscheidung einbeziehen.
+Enthält Strategien die den Rundenkontext in ihre Entscheidung einbeziehen.
 """
 
-from schocken.types import GameState, Decision, PublicPlayerState
 from schocken.strategies.base import (
     BaseStrategy,
-    worst_public_rank,
-    total_danger,
     parse_threshold,
+    total_danger,
+    worst_public_rank,
 )
+from schocken.types import Decision, GameState, RoundContext
 
 
 class PublicThresholdStrategy(BaseStrategy):
@@ -25,10 +25,12 @@ class PublicThresholdStrategy(BaseStrategy):
         options: list[Decision],
         state: GameState,
         roll: tuple[int, ...],
-        public_table_state: list[PublicPlayerState] | None = None,
+        context: RoundContext | None = None,
     ) -> Decision:
+        table = context["public_table_state"] if context else []
+
         stop_option = next((o for o in options if o["action"] == "stop"), None)
-        worst_public = worst_public_rank(public_table_state)
+        worst_public = worst_public_rank(table)
 
         if stop_option is not None and worst_public is not None:
             if stop_option["rank"] < worst_public:  # type: ignore
@@ -54,11 +56,13 @@ class AdaptiveGreedyStrategy(BaseStrategy):
         options: list[Decision],
         state: GameState,
         roll: tuple[int, ...],
-        public_table_state: list[PublicPlayerState] | None = None,
+        context: RoundContext | None = None,
     ) -> Decision:
+        table = context["public_table_state"] if context else []
+
         stop_option = next((o for o in options if o["action"] == "stop"), None)
         continues = [o for o in options if o["action"] == "continue"]
-        worst_public = worst_public_rank(public_table_state)
+        worst_public = worst_public_rank(table)
 
         if worst_public is None:
             if stop_option is not None and stop_option["rank"] == (0, 0):
@@ -83,7 +87,8 @@ class HybridThresholdStrategy(BaseStrategy):
     Mit öffentlichen Informationen wird nur eine sichere Niederlage vermieden.
 
     Args:
-        threshold: Rang-Tuple unterhalb dessen gestoppt wird wenn kein public state vorliegt.
+        threshold: Schwelle als Würfelbild oder als Rang, unterhalb derer
+            gestoppt wird wenn keine öffentlichen Informationen vorliegen.
     """
 
     def __init__(self, threshold: tuple[int, ...]):
@@ -94,11 +99,13 @@ class HybridThresholdStrategy(BaseStrategy):
         options: list[Decision],
         state: GameState,
         roll: tuple[int, ...],
-        public_table_state: list[PublicPlayerState] | None = None,
+        context: RoundContext | None = None,
     ) -> Decision:
+        table = context["public_table_state"] if context else []
+
         stop_option = next((o for o in options if o["action"] == "stop"), None)
         continues = [o for o in options if o["action"] == "continue"]
-        worst_public = worst_public_rank(public_table_state)
+        worst_public = worst_public_rank(table)
 
         if worst_public is None:
             if stop_option is not None and stop_option["rank"] <= self.threshold:  # type: ignore
@@ -119,10 +126,12 @@ class DangerAwareStrategy(BaseStrategy):
     """
     Berücksichtigt den Gefahrenwert des Tisches bei der Entscheidung.
 
-    Spielt aggressiver wenn der Gefahrenwert hoch ist.
+    Spielt aggressiver wenn der Gefahrenwert hoch ist oder wenn noch keine
+    öffentlichen Informationen vorliegen.
 
     Args:
-        threshold: Rang-Tuple unterhalb dessen gestoppt wird.
+        threshold: Schwelle als Würfelbild oder als Rang, unterhalb derer
+            gestoppt wird.
         risk_aversion: Gefahrenschwelle ab der aggressiver gespielt wird.
     """
 
@@ -135,8 +144,10 @@ class DangerAwareStrategy(BaseStrategy):
         options: list[Decision],
         state: GameState,
         roll: tuple[int, ...],
-        public_table_state: list[PublicPlayerState] | None = None,
+        context: RoundContext | None = None,
     ) -> Decision:
+        table = context["public_table_state"] if context else []
+
         stop_option = next((o for o in options if o["action"] == "stop"), None)
         continues = [o for o in options if o["action"] == "continue"]
 
@@ -146,7 +157,7 @@ class DangerAwareStrategy(BaseStrategy):
         if stop_option["rank"] > self.threshold:  # type: ignore
             return max(continues, key=lambda o: o["state"]["held_ones"])
 
-        if total_danger(public_table_state) > self.risk_aversion:  # type: ignore
+        if not table or total_danger(table) > self.risk_aversion:
             return max(continues, key=lambda o: o["state"]["held_ones"])
 
         return stop_option

@@ -7,7 +7,7 @@ sowie die Entscheidungslogik für den weiteren Spielverlauf.
 
 from schocken.utils import normalize
 from schocken.classification import classify
-from schocken.types import GameState, Decision, PublicPlayerState
+from schocken.types import GameState, Decision, RoundContext
 
 
 def next_states(state: GameState, roll: tuple[int, ...]) -> list[GameState]:
@@ -69,7 +69,7 @@ def decide_after_roll(
     state: GameState,
     roll: tuple[int, ...],
     strategy,
-    public_table_state: list[PublicPlayerState] | None = None,
+    context: RoundContext | None = None,
 ) -> Decision:
     """
     Trifft eine Entscheidung nach einem Wurf basierend auf der gewählten Strategie.
@@ -78,7 +78,7 @@ def decide_after_roll(
         state: Aktueller Spielzustand.
         roll: Gewürfeltes Ergebnis als normalisiertes Tuple.
         strategy: Strategie-Objekt mit einer choose()-Methode.
-        public_table_state: Öffentlich sichtbare Zustände der anderen Spieler.
+        context: Kontext der laufenden Runde.
 
     Returns:
         Entscheidungs-Dictionary mit Aktion, finalem Würfelbild und Rang.
@@ -120,4 +120,4 @@ def decide_after_roll(
             Decision(action="continue", state=next_state, final=None, rank=None)
         )
 
-    return strategy.choose(options, state, roll, public_table_state)
+    return strategy.choose(options, state, roll, context)

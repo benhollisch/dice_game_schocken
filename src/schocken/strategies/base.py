@@ -6,7 +6,7 @@ zur Bewertung des öffentlichen Tischzustands.
 """
 
 from abc import ABC, abstractmethod
-from schocken.types import GameState, Decision, PublicPlayerState
+from schocken.types import GameState, Decision, PublicPlayerState, RoundContext
 from schocken.classification import classify
 from schocken.utils import normalize
 
@@ -20,7 +20,7 @@ class BaseStrategy(ABC):
         options: list[Decision],
         state: GameState,
         roll: tuple[int, ...],
-        public_table_state: list[PublicPlayerState] | None = None,
+        context: RoundContext | None = None,
     ) -> Decision:
         """
         Wählt eine Entscheidung aus den verfügbaren Optionen.

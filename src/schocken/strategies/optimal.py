@@ -218,13 +218,12 @@ class OptimalStrategy(BaseStrategy):
             Zielfunktion für die Bewertung von Endergebnissen.
         """
         n_before = len(public_table_state) if public_table_state else 0
-        n_followers = self.n_players - n_before - 1
 
         return Objective(
             theta=worst_public_rank(public_table_state),
-            n_followers=n_followers,
+            n_followers=self.n_players - n_before - 1,
             opponent_distributions=self.opponent_distributions,
             acts_first=True,
-            is_opener=self.is_opener,
+            is_opener=(n_before == 0),
             max_rolls=self.max_rolls,
         )

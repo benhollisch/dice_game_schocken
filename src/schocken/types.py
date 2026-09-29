@@ -49,3 +49,17 @@ class TurnResult(TypedDict):
     rolls_used: int
     visible_state: tuple[int, ...] | None
     history: list[dict]
+
+
+class RoundContext(TypedDict):
+    """
+    Zustand der laufenden Runde aus Sicht des Spielers am Zug.
+
+    Im Unterschied zu GameState beschreibt dieser Typ nicht den eigenen
+    Wurfverlauf, sondern die Tischsituation: wer bereits gespielt hat, wie
+    viele Spieler insgesamt aktiv sind und welches Wurfbudget gilt.
+    """
+
+    n_active: int
+    max_rolls: int | None
+    public_table_state: list[PublicPlayerState]

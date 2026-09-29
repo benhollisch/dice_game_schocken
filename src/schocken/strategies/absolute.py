@@ -4,7 +4,7 @@ Absolute Strategien für das Schocken-Spiel.
 Enthält Strategien die unabhängig vom öffentlichen Tischzustand entscheiden.
 """
 
-from schocken.types import GameState, Decision, PublicPlayerState
+from schocken.types import GameState, Decision, RoundContext
 from schocken.strategies.base import BaseStrategy, parse_threshold
 
 
@@ -21,7 +21,7 @@ class GreedyAllIn(BaseStrategy):
         options: list[Decision],
         state: GameState,
         roll: tuple[int, ...],
-        public_table_state: list[PublicPlayerState] | None = None,
+        context: RoundContext | None = None,
     ) -> Decision:
         stop_option = next((o for o in options if o["action"] == "stop"), None)
 
@@ -55,7 +55,7 @@ class StaticThresholdStrategy(BaseStrategy):
         options: list[Decision],
         state: GameState,
         roll: tuple[int, ...],
-        public_table_state: list[PublicPlayerState] | None = None,
+        context: RoundContext | None = None,
     ) -> Decision:
         stop_option = next((o for o in options if o["action"] == "stop"), None)
 
