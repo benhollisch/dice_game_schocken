@@ -10,11 +10,11 @@ from schocken.strategies.absolute import StaticThresholdStrategy
 from analysis import print_summary
 
 players = [
-    Player("C1", StaticThresholdStrategy(threshold=(0, -6, -6, -5))),
-    Player("C2", StaticThresholdStrategy(threshold=(2, 3))),
-    Player("C3", StaticThresholdStrategy(threshold=(2, 3))),
+    Player("C1", StaticThresholdStrategy(threshold=(6, 6, 5))),
+    Player("C2", StaticThresholdStrategy(threshold=(1, 1, 2))),
+    Player("C3", StaticThresholdStrategy(threshold=(1, 1, 4))),
 ]
 
-results = simulate_games(players=players, n_games=100)
+results = simulate_games(players=players, n_games=100000)
 print(results)
 print_summary(results)

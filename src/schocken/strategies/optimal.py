@@ -11,8 +11,10 @@ from schocken.classification import classify
 from schocken.distribution import roll_distribution, survival_probability_with_ties
 from schocken.state import next_states
 from schocken.strategies.base import BaseStrategy, worst_public_rank
-from schocken.types import Decision, GameState, PublicPlayerState
+from schocken.types import Decision, GameState, RoundContext
 from schocken.utils import normalize
+
+JointDistribution = dict[tuple[tuple[int, ...], int], float]
 
 
 class Objective:
@@ -29,7 +31,7 @@ class Objective:
         n_followers: Anzahl der Spieler, die nach diesem Zug noch folgen.
         opponent_distributions: Gemeinsame Verteilungen über Rang und Wurfzahl,
             je Wurfbudget des Gegners.
-        acts_first: Ob der Spieler vor den ausstehenden Gegnern an der Reihe war.
+        acts_first: Ob der Spieler vor den ausstehenden Gegnern an der Reihe ist.
         is_opener: Ob die eigene Wurfzahl das Budget der Nachfolger setzt.
         max_rolls: Wurfbudget der Runde, sofern bereits festgelegt.
     """
@@ -38,7 +40,7 @@ class Objective:
         self,
         theta: tuple[int, ...] | None,
         n_followers: int,
-        opponent_distributions: dict[int, dict[tuple[tuple[int, ...], int], float]],
+        opponent_distributions: dict[int, JointDistribution],
         acts_first: bool = True,
         is_opener: bool = False,
         max_rolls: int = 3,
@@ -61,10 +63,13 @@ class Objective:
         Returns:
             Wahrscheinlichkeit, die Runde nicht zu verlieren.
         """
+        # TODO: decide_after_roll wird ohne RoundContext aufgerufen. Für reaktive
+        # Strategien entspricht die Verteilung daher nicht dem tatsächlichen
+        # Spielverhalten. OptimalStrategy fällt dabei auf fallback_players zurück.
         if self.theta is not None and rank >= self.theta:
             return 0.0
 
-        if self.n_followers == 0:
+        if self.n_followers <= 0:
             return 1.0
 
         budget = rolls_used if self.is_opener else self.max_rolls
@@ -158,44 +163,43 @@ class OptimalStrategy(BaseStrategy):
     """
     Strategie, die jede Option über die Bellman-Wertfunktion bewertet.
 
-    Die Zielfunktion wird beim Aufruf aus dem öffentlichen Tischzustand
-    aufgebaut, da theta und die Anzahl der Nachfolger pro Zug variieren.
+    Die Zielfunktion wird pro Zug aus dem Rundenkontext aufgebaut, da theta,
+    die Anzahl der Nachfolger, die Startspielerrolle und das Wurfbudget von
+    Zug zu Zug variieren.
 
     Args:
         opponent_distributions: Tabellierte Gegnerverteilungen je Wurfbudget.
-        n_players: Gesamtzahl der Spieler in der Runde.
-        max_rolls: Wurfbudget der Runde.
-        is_opener: Ob dieser Spieler die Runde eröffnet.
+        max_rolls: Wurfbudget, falls der Kontext noch keines festlegt.
+        fallback_players: Spielerzahl, falls kein Kontext übergeben wird
+            (z.B. bei der Enumeration in distribution.py). Im Spiel ohne Wirkung.
     """
 
     def __init__(
         self,
-        opponent_distributions: dict[int, dict[tuple[tuple[int, ...], int], float]],
-        n_players: int,
+        opponent_distributions: dict[int, JointDistribution],
         max_rolls: int = 3,
-        is_opener: bool = False,
+        fallback_players: int = 2,
     ):
         self.opponent_distributions = opponent_distributions
-        self.n_players = n_players
         self.max_rolls = max_rolls
-        self.is_opener = is_opener
+        self.fallback_players = fallback_players
 
     def choose(
         self,
         options: list[Decision],
         state: GameState,
         roll: tuple[int, ...],
-        public_table_state: list[PublicPlayerState] | None = None,
+        context: RoundContext | None = None,
     ) -> Decision:
-        objective = self._build_objective(public_table_state)
+        objective = self._build_objective(context)
         cache: dict = {}
 
-        best = None
+        best: Decision | None = None
         best_value = -1.0
 
         for option in options:
             if option["action"] == "stop":
-                value = objective(option["rank"], option["state"]["rolls_used"])
+                value = objective(option["rank"], option["state"]["rolls_used"])  # type: ignore
             else:
                 value = value_before_roll(option["state"], objective, cache)
 
@@ -203,27 +207,30 @@ class OptimalStrategy(BaseStrategy):
                 best_value = value
                 best = option
 
+        if best is None:
+            raise RuntimeError("Keine gültige Option verfügbar.")
         return best
 
-    def _build_objective(
-        self, public_table_state: list[PublicPlayerState] | None
-    ) -> Objective:
+    def _build_objective(self, context: RoundContext | None) -> Objective:
         """
-        Baut die Zielfunktion aus dem aktuellen Tischzustand.
+        Baut die Zielfunktion aus dem aktuellen Rundenkontext.
 
         Args:
-            public_table_state: Öffentlich sichtbare Zustände der Vorgänger.
+            context: Rundenkontext aus Sicht des Spielers am Zug.
 
         Returns:
             Zielfunktion für die Bewertung von Endergebnissen.
         """
-        n_before = len(public_table_state) if public_table_state else 0
+        table = context["public_table_state"] if context else []
+        n_active = context["n_active"] if context else self.fallback_players
+        round_budget = context["max_rolls"] if context else None
+        n_before = len(table)
 
         return Objective(
-            theta=worst_public_rank(public_table_state),
-            n_followers=self.n_players - n_before - 1,
+            theta=worst_public_rank(table),
+            n_followers=n_active - n_before - 1,
             opponent_distributions=self.opponent_distributions,
             acts_first=True,
             is_opener=(n_before == 0),
-            max_rolls=self.max_rolls,
+            max_rolls=round_budget if round_budget is not None else self.max_rolls,
         )

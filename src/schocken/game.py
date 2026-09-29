@@ -7,14 +7,14 @@ Enthält die Klassen Player und Game sowie die Funktionen play_turn und compare_
 from schocken.dice import roll_dice
 from schocken.classification import lid_value, is_shock_out
 from schocken.state import decide_after_roll
-from schocken.types import GameState, PublicPlayerState, TurnResult
+from schocken.types import GameState, PublicPlayerState, RoundContext, TurnResult
 from schocken.strategies.base import BaseStrategy
 
 
 def play_turn(
     strategy: BaseStrategy,
     max_rolls: int = 3,
-    public_table_state: list[PublicPlayerState] | None = None,
+    context: RoundContext | None = None,
 ) -> TurnResult:
     """
     Simuliert den Zug eines Spielers.
@@ -22,7 +22,7 @@ def play_turn(
     Args:
         strategy: Strategie des Spielers.
         max_rolls: Maximale Anzahl an Würfen.
-        public_table_state: Öffentlich sichtbare Zustände der anderen Spieler.
+        context: Rundenkontext aus Sicht des Spielers am Zug.
 
     Returns:
         Ergebnis des Zuges als TurnResult.
@@ -40,7 +40,7 @@ def play_turn(
 
     while state["rolls_left"] > 0:
         roll = roll_dice(state["dice_to_roll"])
-        decision = decide_after_roll(state, roll, strategy, public_table_state)
+        decision = decide_after_roll(state, roll, strategy, context)
 
         history.append(
             {
@@ -141,17 +141,17 @@ class Game:
         public_table_state: list[PublicPlayerState] = []
 
         for i, player in enumerate(ordered_players):
+            context = RoundContext(
+                n_active=len(players),
+                max_rolls=round_max_rolls,
+                public_table_state=public_table_state,
+            )
+
             if round_max_rolls is None:
-                result = play_turn(
-                    player.strategy, 3, public_table_state=public_table_state
-                )
+                result = play_turn(player.strategy, 3, context=context)
                 round_max_rolls = result["rolls_used"]
             else:
-                result = play_turn(
-                    player.strategy,
-                    round_max_rolls,
-                    public_table_state=public_table_state,
-                )
+                result = play_turn(player.strategy, round_max_rolls, context=context)
 
             public_table_state.append(
                 PublicPlayerState(
