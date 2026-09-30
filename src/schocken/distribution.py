@@ -266,39 +266,38 @@ def opponent_distribution(
     return rank_distribution(start, strategy)
 
 
-   def hidden_distribution(
-       held_ones: int,
-       rolls_used: int,
-       n_dice: int = 3,
-   ) -> dict[tuple[tuple[int, ...], int], float]:
-       """
-       Berechnet die bedingte Verteilung eines Vorgängers mit verdecktem letzten Wurf.
+def hidden_distribution(
+    held_ones: int,
+    rolls_used: int,
+    n_dice: int = 3,
+) -> dict[tuple[tuple[int, ...], int], float]:
+    """
+    Berechnet die bedingte Verteilung eines Vorgängers mit verdecktem letzten Wurf.
 
-       Wer sein Wurfbudget ausschöpft, zeigt nur die herausgelegten Einsen; der
-       letzte Wurf mit den übrigen n_dice - held_ones Würfeln bleibt verdeckt.
-       Deckt teilverdeckte (held_ones > 0) und verdeckte Vorgänger (held_ones = 0) ab.
+    Wer sein Wurfbudget ausschöpft, zeigt nur die herausgelegten Einsen; der
+    letzte Wurf mit den übrigen n_dice - held_ones Würfeln bleibt verdeckt.
+    Deckt teilverdeckte (held_ones > 0) und verdeckte Vorgänger (held_ones = 0) ab.
 
-       Die Verteilung ist exakt und hängt nicht von der Strategie des Vorgängers
-       ab: Seine Entscheidungen stecken vollständig in held_ones, der letzte Wurf
-       ist ein frischer Wurf, und im letzten Wurf ist keine Konversion erlaubt.
+    Die Verteilung ist exakt und hängt nicht von der Strategie des Vorgängers
+    ab: Seine Entscheidungen stecken vollständig in held_ones, der letzte Wurf
+    ist ein frischer Wurf, und im letzten Wurf ist keine Konversion erlaubt.
 
-       Args:
-           held_ones: Anzahl der sichtbar herausgelegten Einsen.
-           rolls_used: Verbrauchte Wurfzahl des Vorgängers, also das Wurfbudget.
-           n_dice: Anzahl der Würfel im Spiel.
+    Args:
+        held_ones: Anzahl der sichtbar herausgelegten Einsen.
+        rolls_used: Verbrauchte Wurfzahl des Vorgängers, also das Wurfbudget.
+        n_dice: Anzahl der Würfel im Spiel.
 
-       Returns:
-           Dictionary von (Rang, Wurfzahl) auf Wahrscheinlichkeit, im selben
-           Format wie joint_distribution().
-       """
-       distribution: dict[tuple[tuple[int, ...], int], float] = defaultdict(float)
+    Returns:
+        Dictionary von (Rang, Wurfzahl) auf Wahrscheinlichkeit, im selben
+        Format wie joint_distribution().
+    """
+    distribution: dict[tuple[tuple[int, ...], int], float] = defaultdict(float)
 
-       for roll, probability in roll_distribution(n_dice - held_ones).items():
-           final = normalize((1,) * held_ones + roll)
-           distribution[(classify(final), rolls_used)] += probability
+    for roll, probability in roll_distribution(n_dice - held_ones).items():
+        final = normalize((1,) * held_ones + roll)
+        distribution[(classify(final), rolls_used)] += probability
 
-       return dict(distribution)
-
+    return dict(distribution)
 
 
 def cumulative_table(
