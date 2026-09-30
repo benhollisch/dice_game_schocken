@@ -43,7 +43,7 @@ zweiten Halbzeit spielen die beiden Halbzeitverlierer das Finale aus.
 
 ```
 src/schocken/
-├── types.py          # TypedDicts: GameState, Decision, TurnResult, PublicPlayerState
+├── types.py          # TypedDicts: GameState, Decision, TurnResult, PublicPlayerState, RoundContext
 ├── utils.py          # normalize()
 ├── dice.py           # roll_dice()
 ├── classification.py # is_shock, is_general, is_straight, is_shock_out, classify, lid_value
@@ -55,7 +55,8 @@ src/schocken/
 └── strategies/
     ├── base.py       # BaseStrategy (ABC), danger_score, total_danger, worst_public_rank
     ├── absolute.py   # GreedyAllIn, StaticThresholdStrategy
-    └── relative.py   # PublicThreshold, AdaptiveGreedy, HybridThreshold, DangerAware
+    ├── relative.py   # PublicThreshold, AdaptiveGreedy, HybridThreshold, DangerAware
+    └── optimal.py    # Objective, Bellman-Wertfunktion, OptimalStrategy
 testing/
 └── test_distribution.py
 main.py
@@ -94,18 +95,34 @@ Siehe `docs/ERKENNTNISSE.md` für die ausführliche Fassung.
    GreedyAllIn ist als Gegnermodell **nicht konservativ**. Der Monotonie-Check eignet
    sich als Regressionstest für die optimale Politik.
 7. **First-Mover-Kopplung** — die eigene Wurfzahl verbessert die eigene Rangverteilung,
-   hebt aber die Obergrenze für alle Nachfolger. Straße `(6,5,4)`: survival fällt von
-   0.8750 (m=1) auf 0.5553 (m=3). Empirisch verliert der Startspieler seltener
-   (≈0.4793 vs ≈0.5207 bei n=10.000).
+   hebt aber die Obergrenze für alle Nachfolger. Straße `(6,5,4)`: Überlebenswahrscheinlichkeit
+   gegen einen einzelnen Gegner fällt von 0.8750 (m=1) auf 0.5553 (m=3). Empirisch
+   verliert der Startspieler seltener (≈0.4793 vs ≈0.5207 bei n=10.000).
+8. **Zielfunktion misst „nicht Verlierer sein“, nicht „alle schlagen“** — eine frühere
+   Fassung `1[ρ < θ] · S^k` war die Gewinnwahrscheinlichkeit. Korrekt ist
+   `1 − Π_j (1 − S_j)`. Derselbe Fehler steht im Paper-Entwurf als Gleichung (3).
+9. **Verdeckte Vorgänger** (Budget ausgeschöpft, letzter Wurf verdeckt) sind Gegner mit
+   exakt bekannter bedingter Verteilung, keine fehlenden Spieler. Sie zu ignorieren führt
+   dazu, dass OptimalStrategy mit sicher verlorenen Bildern stoppt.
 
 ## Methodische Festlegungen
 
-**Zielfunktion (Option A — Rundenverlust minimieren):**
+**Zielfunktion (Option A — nicht Verlierer der Runde sein):**
 
-    u(ρ, m) = 1[ρ < θ] · (P_m(Rang > ρ))^k
+    P(nicht Verlierer | ρ, m) = 1 − Π_j (1 − S_j(ρ, m))
 
-mit θ aus `worst_public_rank()`, `P_m` der Gegnerrangverteilung bei m Würfen, k der
-Anzahl Nachfolger.
+`S_j` ist die Wahrscheinlichkeit, dass Gegner j schlechter abschneidet — mit Tie-Break
+(weniger Würfe, dann frühere Position). Drei Gegnergruppen:
+
+| Gruppe | S_j | Wurfzahl des Gegners | acts_first |
+|---|---|---|---|
+| offene Vorgänger | 0 oder 1, Rang bekannt | bekannt | False |
+| verdeckte Vorgänger | bedingt: ein Wurf mit 3 − h Würfeln | volles Budget | False |
+| Nachfolger | Budgetverteilung `P_m` | aus der Verteilung | True |
+
+`acts_first` gilt aus Sicht des entscheidenden Spielers. Schlägt man einen offenen
+Vorgänger, ist der Wert 1. Beim Startspieler ist die eigene Wurfzahl zugleich das Budget
+`m` der Nachfolger.
 
 **Bellman-Struktur** (Zufall und Entscheidung wechseln sich ab):
 
@@ -114,8 +131,9 @@ Anzahl Nachfolger.
 
 Anker bei `rolls_left = 1`, wo keine Entscheidung mehr existiert.
 
-**θ ist Parameter, nicht Zustandsdimension** — die Induktion wird einmal pro θ gerechnet,
-statt den Zustandsraum zu vervielfachen.
+**Tischzustand ist Parameter, nicht Zustandsdimension** — die öffentliche Information ist
+innerhalb eines Zuges konstant und geht in die Zielfunktion ein, statt den Zustandsraum
+der Induktion zu vervielfachen.
 
 **Gegnerverteilungen werden tabelliert** — `P_m` hängt weder vom Tischzustand noch vom
 eigenen Bild ab. Drei Enumerationen genügen für eine ganze Simulationskampagne.
@@ -125,7 +143,10 @@ und beantwortete nur die Frage nach der besten ersten Abweichung.
 
 ## Offene Punkte
 
-- [ ] **Rückwärtsinduktion** in `strategies/optimal.py` implementieren
+- [ ] **`Objective` in `strategies/optimal.py` umbauen** auf `1 − Π_j (1 − S_j)` mit den
+      drei Gegnergruppen; verdeckte Vorgänger über bedingte Verteilung einbeziehen
+- [ ] Tie-Break gegen offene Vorgänger: Gleichstand mit weniger Würfen ist kein Verlust
+- [ ] Gleichung (3) im Paper-Entwurf korrigieren
 - [ ] Zielfunktion Option B (erwartete Deckelanzahl) und C (Halbzeitverlust)
 - [ ] **Dominanz des Herauslegens** empirisch prüfen, gegeben die Stop-Entscheidung
 - [ ] **Fixpunkt-Iteration**: optimale Politik gegen sich selbst tabellieren — Konvergenz offen

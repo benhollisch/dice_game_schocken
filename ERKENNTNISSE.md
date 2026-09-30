@@ -1,7 +1,7 @@
 # Erkenntnisse — Schocken-Simulation
 
 Sammlung der analytischen und methodischen Befunde aus der Modellentwicklung.
-Stand: 18.09.2026
+Stand: 30.09.2026
 
 ---
 
@@ -127,15 +127,13 @@ Quantifiziert am Beispiel einer Straße `(6,5,4)`:
 | 2 | 0.7238 |
 | 3 | 0.5553 |
 
-Die Wahrscheinlichkeit, dass ein Gegner schlechter abschneidet, fällt von 87,5 % auf
-55,5 %. Das erklärt, warum frühes Stoppen mit einem mittelmäßigen Bild rational sein kann.
+Die Wahrscheinlichkeit, dass ein *einzelner* Gegner schlechter abschneidet, fällt von
+87,5 % auf 55,5 %. Das erklärt, warum frühes Stoppen mit einem mittelmäßigen Bild
+rational sein kann.
 
-**Zielfunktion:**
-
-    u(ρ, m) = 1[ρ < θ] · (P_m(Rang > ρ))^k
-
-mit θ aus `worst_public_rank()`, P_m der Rangverteilung eines Gegners mit m Würfen und
-k der Anzahl der Nachfolger.
+Wie diese Einzelwahrscheinlichkeiten zur Zielfunktion zusammengesetzt werden, steht in
+Abschnitt 10. Eine frühere Fassung dieses Abschnitts enthielt an dieser Stelle eine
+fehlerhafte Zielfunktion.
 
 **Einschränkung:** Die Kopplung gilt nur für den Startspieler. Wer nach ihm dran ist, hat
 die Obergrenze bereits vorgegeben — seine Wurfzahl wirkt nur noch über den Tie-Break.
@@ -146,8 +144,9 @@ der Startspieler seltener (≈0.4793 vs ≈0.5207 bei n=10.000), Konfidenzinterv
 
 ## 8. Unabhängigkeitsannahme für Nachfolger
 
-Das Produkt über die noch offenen Gegner setzt Unabhängigkeit ihrer Ergebnisse voraus.
-Die Würfel sind unabhängig, die Entscheidungen nicht ganz — alle sehen denselben Tisch.
+Das Produkt in der Zielfunktion (Abschnitt 10) setzt Unabhängigkeit der Gegnerergebnisse
+voraus. Die Würfel sind unabhängig, die Entscheidungen nicht ganz — alle sehen denselben
+Tisch.
 
 Unter GreedyAllIn tritt das Problem nicht auf, da die Strategie den `public_table_state`
 ignoriert; dort ist die Unabhängigkeit exakt. Für reaktive Referenzstrategien ist sie
@@ -165,10 +164,86 @@ Rückwärtsinduktion ankert bei `rolls_left = 1`, wo keine Entscheidung mehr exi
     Q(s, r) = max_a { u(final) falls stop,
                       W(s') falls continue }             (nach dem Wurf)
 
-**θ als Parameter, nicht als Zustandsdimension.** Der Gegnerstand geht über einen
-Schwellenrang ein, statt den Zustandsraum aufzublähen. Die Induktion wird einmal pro θ
-gerechnet.
+**Tischzustand als Parameter, nicht als Zustandsdimension.** Die öffentliche Information
+— Ränge offener Vorgänger, gehaltene Einsen verdeckter Vorgänger, Anzahl der Nachfolger,
+Wurfbudget — ist innerhalb eines Zuges konstant. Sie geht als Parameter in die
+Zielfunktion ein, statt den Zustandsraum der Induktion aufzublähen.
 
 **Tabellierung der Gegnerverteilungen.** P_m hängt weder vom Tischzustand noch vom
 eigenen Bild ab. Drei Enumerationen (m = 1, 2, 3) genügen für die gesamte Simulation;
 kumulierte Tabellen machen auch die Tailsummen zu Lookups.
+
+## 10. Zielfunktion: nicht Verlierer sein
+
+Ziel der Option A ist, die Runde **nicht zu verlieren**. Dafür reicht es, dass
+**mindestens ein** Gegner schlechter abschneidet. Man verliert nur, wenn **jeder**
+Gegner besser ist:
+
+    P(nicht Verlierer | ρ, m) = 1 − Π_j (1 − S_j(ρ, m))
+
+mit S_j(ρ, m) = Wahrscheinlichkeit, dass Gegner j schlechter abschneidet als man selbst
+mit Rang ρ nach m Würfen — einschließlich beider Tie-Break-Stufen (weniger Würfe, dann
+frühere Position).
+
+**Korrektur einer früheren Fassung.** Zunächst war die Zielfunktion als
+
+    u(ρ, m) = 1[ρ < θ] · S(ρ)^k
+
+formuliert. Das ist die Wahrscheinlichkeit, **alle** Gegner zu schlagen, also die Runde
+zu gewinnen — nicht, sie nicht zu verlieren. Bei zwei Spielern fallen beide Formeln
+zusammen, ab drei Spielern unterscheiden sie sich stark. Beispiel: Man hat eine Straße,
+ein offener Vorgänger eine Hausnummer, ein Nachfolger folgt noch. Man ist sicher nicht
+Verlierer; die alte Formel liefert trotzdem nur S(ρ). Eine Politik auf Basis der alten
+Formel spielt wie jemand, der gewinnen will, und nimmt Risiken, die sich für bloßes
+Nicht-Verlieren nicht lohnen.
+
+Dieselbe fehlerhafte Formel steht im Paper-Entwurf als Gleichung (3) und ist dort zu
+korrigieren.
+
+**Die drei Gegnergruppen:**
+
+| Gruppe | S_j | Wurfzahl des Gegners | acts_first |
+|---|---|---|---|
+| offene Vorgänger | 0 oder 1 (Rang bekannt) | bekannt | False |
+| verdeckte Vorgänger | bedingte Verteilung (Abschnitt 11) | volles Budget | False |
+| Nachfolger | Budgetverteilung P_m | aus der Verteilung | True |
+
+`acts_first` ist aus Sicht des entscheidenden Spielers definiert: War er vor dem
+betrachteten Gegner an der Reihe? Gegenüber Vorgängern also nie.
+
+**Konsequenzen:**
+- Schlägt man einen offenen Vorgänger, ist der Wert sofort 1. Der schlechteste offene
+  Rang θ ist damit eine **hinreichende Bedingung für Sicherheit**, kein Faktor.
+- Gleichstand mit einem offenen Vorgänger ist kein sicherer Verlust: Bei weniger Würfen
+  gewinnt man ihn.
+- Bei k identischen, unabhängigen Nachfolgern wird ihr Beitrag zu (1 − S_m(ρ, m))^k.
+- Beim Startspieler ist m zugleich das Budget der Nachfolger (First-Mover-Kopplung,
+  Abschnitt 7).
+
+## 11. Verdeckte Vorgänger sind Gegner mit bedingter Verteilung
+
+Wer sein Wurfbudget ausschöpft, veröffentlicht nur die herausgelegten Einsen; der letzte
+Wurf bleibt verdeckt. Das entspricht der Spielregel. `worst_public_rank()` berücksichtigt
+aber nur Bilder mit drei sichtbaren Würfeln — verdeckte Vorgänger fielen dadurch
+vollständig aus der Zielfunktion heraus.
+
+**Beobachteter Fehler:** Zwei Spieler, C4 (GreedyAllIn) eröffnet, braucht drei Würfe und
+zeigt `(1, 1)`. OptimalStrategy (C5) sieht θ = None und null Nachfolger, bewertet jede
+Option mit 1.0 und stoppt mit `(5,3,2)` — ein sicherer Verlust, da C4 garantiert einen
+Schock oder Schock-Out hat.
+
+**Richtige Modellierung:** Ein verdeckter Vorgänger mit h gehaltenen Einsen hat genau
+einen verdeckten Wurf mit 3 − h Würfeln getan. Seine Rangverteilung ist damit exakt:
+
+    P(Rang_j = r) = Σ_{w : classify(sort(1^h, w)) = r} P(w | 3 − h Würfel)
+
+direkt aus `roll_distribution` und `classify`. Seine Wurfzahl ist das volle Budget.
+
+Im Beispiel: je 1/6 Schock-Out und Schock 6 bis Schock 2. Ein eigener Schock 4 nach zwei
+Würfen überlebt gegen C4 mit Wahrscheinlichkeit 3/6 (Schock 3 und 2 schlechter,
+Schock 4 durch weniger Würfe gewonnen); nach drei Würfen nur mit 2/6, weil C4 den
+Gleichstand über die frühere Position gewinnt.
+
+**Nicht der Erwartungswert zählt.** „Im Mittel Schock 3,5“ ist keine geeignete
+Zielgröße — entscheidend ist die Wahrscheinlichkeit, schlechter zu sein, und die hängt an
+der ganzen Verteilung.
