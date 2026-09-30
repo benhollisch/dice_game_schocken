@@ -164,7 +164,7 @@ class Game:
                     player=player.name,
                     turn_order=i,
                     visible_state=result["visible_state"],
-                    is_closed=result["rolls_used"] == round_max_rolls,
+                    rolls_used=result["rolls_used"],
                 )
             )
 

@@ -25,7 +25,7 @@ class PublicPlayerState(TypedDict):
     player: str
     turn_order: int
     visible_state: tuple[int, ...] | None
-    is_closed: bool
+    rolls_used: int
 
 
 class Decision(TypedDict):

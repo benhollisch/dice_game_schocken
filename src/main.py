@@ -33,7 +33,7 @@ players = [
     # Player("C2", StaticThresholdStrategy(threshold=(1, 1, 2))),
     # Player("C3", StaticThresholdStrategy(threshold=(1, 1, 4))),
     Player("C4", GreedyAllIn()),
-    Player("C5", OptimalStrategy(opponent_distributions=tables)),
+    Player("C5", OptimalStrategy(follower_distributions=tables)),
 ]
 
 results = simulate_games(players=players, n_games=5)
