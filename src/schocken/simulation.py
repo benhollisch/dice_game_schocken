@@ -51,6 +51,10 @@ def simulate_games(players: list[Player], n_games: int = 10) -> dict:
     """
     Simuliert mehrere Spiele und gibt Auswertungsstatistiken zurück.
 
+    Der Verlierer eines Spiels eröffnet das folgende Spiel, analog zur
+    Rotation innerhalb eines Spiels. Das erste Spiel eröffnet der erste
+    Spieler der Liste.
+
     Args:
         players: Liste der Spieler mit ihren Strategien.
         n_games: Anzahl der zu simulierenden Spiele.
@@ -60,10 +64,11 @@ def simulate_games(players: list[Player], n_games: int = 10) -> dict:
     """
     loser_counts: Counter = Counter()
     rounds_per_game = []
+    starting_player = 0
 
     for _ in tqdm(range(n_games)):
         fresh_players = [Player(p.name, p.strategy) for p in players]
-        game = Game(fresh_players)
+        game = Game(fresh_players, starting_player=starting_player)
         rounds = 0
 
         while not game.is_game_over():
@@ -77,6 +82,8 @@ def simulate_games(players: list[Player], n_games: int = 10) -> dict:
         loser = next(player for player in game.players if player.lids > 0)
         loser_counts[loser.name] += 1
         rounds_per_game.append(rounds)
+
+        starting_player = game.players.index(loser)
 
     return {
         "n_games": n_games,

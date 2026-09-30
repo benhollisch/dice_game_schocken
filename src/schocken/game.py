@@ -115,11 +115,17 @@ class Game:
     Args:
         players: Liste der Spieler.
         starting_lids: Anzahl der Deckel im Starttopf.
+        starting_player: Index des Spielers, der die erste Runde eröffnet.
     """
 
-    def __init__(self, players: list[Player], starting_lids: int = 13):
+    def __init__(
+        self,
+        players: list[Player],
+        starting_lids: int = 13,
+        starting_player: int = 0,
+    ):
         self.players = players
-        self.starting_player = 0
+        self.starting_player = starting_player
         self.pot = starting_lids
 
     def active_players(self) -> list[Player]:

@@ -30,12 +30,12 @@ tables = {
 
 players = [
     Player("C1", StaticThresholdStrategy(threshold=(6, 6, 5))),
-    Player("C2", StaticThresholdStrategy(threshold=(1, 1, 2))),
-    Player("C3", StaticThresholdStrategy(threshold=(1, 1, 4))),
+    # Player("C2", StaticThresholdStrategy(threshold=(1, 1, 2))),
+    # Player("C3", StaticThresholdStrategy(threshold=(1, 1, 4))),
     Player("C4", GreedyAllIn()),
     Player("C5", OptimalStrategy(opponent_distributions=tables)),
 ]
 
-results = simulate_games(players=players, n_games=100)
+results = simulate_games(players=players, n_games=3)
 print(results)
 print_summary(results)
