@@ -6,7 +6,7 @@ zur Bewertung des öffentlichen Tischzustands.
 """
 
 from abc import ABC, abstractmethod
-from schocken.types import GameState, Decision, PublicPlayerState, RoundContext
+from schocken.typedefs import GameState, Decision, PublicPlayerState, RoundContext
 from schocken.classification import classify
 from schocken.utils import normalize
 

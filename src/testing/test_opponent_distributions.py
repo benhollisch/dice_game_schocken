@@ -42,7 +42,7 @@ from schocken.strategies.optimal import (  # noqa: E402
     OptimalStrategy,
     split_predecessors,
 )
-from schocken.types import GameState, PublicPlayerState, RoundContext  # noqa: E402
+from schocken.typedefs import GameState, PublicPlayerState, RoundContext  # noqa: E402
 
 TOLERANCE = 1e-12
 P_VALUE_THRESHOLD = 1e-3

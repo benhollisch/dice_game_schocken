@@ -7,7 +7,7 @@ Enthält die Klassen Player und Game sowie die Funktionen play_turn und compare_
 from schocken.dice import roll_dice
 from schocken.classification import lid_value, is_shock_out
 from schocken.state import decide_after_roll
-from schocken.types import GameState, PublicPlayerState, RoundContext, TurnResult
+from schocken.typedefs import GameState, PublicPlayerState, RoundContext, TurnResult
 from schocken.strategies.base import BaseStrategy
 
 

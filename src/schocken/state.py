@@ -7,7 +7,7 @@ sowie die Entscheidungslogik für den weiteren Spielverlauf.
 
 from schocken.utils import normalize
 from schocken.classification import classify
-from schocken.types import GameState, Decision, RoundContext
+from schocken.typedefs import GameState, Decision, RoundContext
 
 
 def next_states(state: GameState, roll: tuple[int, ...]) -> list[GameState]:

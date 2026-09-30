@@ -11,7 +11,7 @@ from schocken.distribution import (
 from schocken.classification import classify
 import schocken.state as state_module
 from schocken.strategies.absolute import GreedyAllIn
-from schocken.types import GameState
+from schocken.typedefs import GameState
 
 d = roll_distribution(3)
 print(len(d), sum(d.values()))

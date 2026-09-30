@@ -4,7 +4,7 @@ Absolute Strategien für das Schocken-Spiel.
 Enthält Strategien die unabhängig vom öffentlichen Tischzustand entscheiden.
 """
 
-from schocken.types import GameState, Decision, RoundContext
+from schocken.typedefs import GameState, Decision, RoundContext
 from schocken.strategies.base import BaseStrategy, parse_threshold
 
 

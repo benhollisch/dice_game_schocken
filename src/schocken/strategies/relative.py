@@ -10,7 +10,7 @@ from schocken.strategies.base import (
     total_danger,
     worst_public_rank,
 )
-from schocken.types import Decision, GameState, RoundContext
+from schocken.typedefs import Decision, GameState, RoundContext
 
 
 class PublicThresholdStrategy(BaseStrategy):

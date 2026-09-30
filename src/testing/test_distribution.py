@@ -16,7 +16,7 @@ from schocken.strategies.absolute import (
     GreedyAllIn,
     StaticThresholdStrategy,
 )  # noqa: E402
-from schocken.types import GameState  # noqa: E402
+from schocken.typedefs import GameState  # noqa: E402
 from schocken.classification import classify
 
 STRATEGY = StaticThresholdStrategy(threshold=classify((6, 5, 5)))

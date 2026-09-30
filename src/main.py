@@ -9,7 +9,7 @@ from schocken.simulation import simulate_games
 from schocken.distribution import joint_distribution
 from schocken.strategies.absolute import StaticThresholdStrategy, GreedyAllIn
 from schocken.strategies.optimal import OptimalStrategy
-from schocken.types import GameState
+from schocken.typedefs import GameState
 from analysis import print_summary
 
 reference = GreedyAllIn()

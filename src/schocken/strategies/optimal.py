@@ -29,7 +29,7 @@ from schocken.distribution import (
 )
 from schocken.state import next_states
 from schocken.strategies.base import BaseStrategy
-from schocken.types import Decision, GameState, PublicPlayerState, RoundContext
+from schocken.typedefs import Decision, GameState, PublicPlayerState, RoundContext
 from schocken.utils import normalize
 
 Outcome = tuple[tuple[int, ...], int]

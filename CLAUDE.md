@@ -43,7 +43,7 @@ zweiten Halbzeit spielen die beiden Halbzeitverlierer das Finale aus.
 
 ```
 src/schocken/
-├── types.py          # TypedDicts: GameState, Decision, TurnResult, PublicPlayerState, RoundContext
+├── typedefs.py       # TypedDicts: GameState, Decision, TurnResult, PublicPlayerState, RoundContext
 ├── utils.py          # normalize()
 ├── dice.py           # roll_dice()
 ├── classification.py # is_shock, is_general, is_straight, is_shock_out, classify, lid_value

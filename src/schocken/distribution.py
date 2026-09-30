@@ -13,7 +13,7 @@ from bisect import bisect_right
 
 from schocken.state import decide_after_roll
 from schocken.strategies.base import BaseStrategy
-from schocken.types import GameState
+from schocken.typedefs import GameState
 from schocken.utils import normalize
 from schocken.classification import classify
 
