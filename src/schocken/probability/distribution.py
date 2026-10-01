@@ -14,11 +14,11 @@ from itertools import product
 from math import comb, factorial
 from bisect import bisect_right
 
-from dice_game_schocken.src.schocken.core.state import decide_after_roll
+from schocken.core.state import decide_after_roll
 from schocken.strategies.base import BaseStrategy
-from dice_game_schocken.src.schocken.core.typedefs import GameState
+from schocken.core.typedefs import GameState
 from schocken.utils import normalize
-from dice_game_schocken.src.schocken.core.classification import classify
+from schocken.core.classification import classify
 
 
 def roll_distribution(n_dice: int) -> dict[tuple[int, ...], float]:

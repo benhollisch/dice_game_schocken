@@ -4,10 +4,10 @@ Spiellogik für das Schocken-Spiel.
 Enthält die Klassen Player und Game sowie die Funktionen play_turn und compare_results.
 """
 
-from dice_game_schocken.src.schocken.core.dice import roll_dice
-from dice_game_schocken.src.schocken.core.classification import lid_value, is_shock_out
-from dice_game_schocken.src.schocken.core.state import decide_after_roll
-from dice_game_schocken.src.schocken.core.typedefs import (
+from schocken.core.dice import roll_dice
+from schocken.core.classification import lid_value, is_shock_out
+from schocken.core.state import decide_after_roll
+from schocken.core.typedefs import (
     GameState,
     PublicPlayerState,
     RoundContext,

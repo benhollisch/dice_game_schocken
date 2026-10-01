@@ -7,7 +7,7 @@ Enthält Funktionen zur Simulation mehrerer Spiele und zur Ausgabe von Rundendet
 from collections import Counter
 from tqdm import tqdm
 
-from dice_game_schocken.src.schocken.engine.game import Game, Player
+from schocken.engine.game import Game, Player
 
 
 def print_round_summary(game: Game, round_result: dict) -> None:

@@ -10,7 +10,7 @@ from schocken.strategies.base import (
     total_danger,
     worst_public_rank,
 )
-from dice_game_schocken.src.schocken.core.typedefs import (
+from schocken.core.typedefs import (
     Decision,
     GameState,
     RoundContext,

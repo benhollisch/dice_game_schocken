@@ -6,13 +6,13 @@ zur Bewertung des öffentlichen Tischzustands.
 """
 
 from abc import ABC, abstractmethod
-from dice_game_schocken.src.schocken.core.typedefs import (
+from schocken.core.typedefs import (
     GameState,
     Decision,
     PublicPlayerState,
     RoundContext,
 )
-from dice_game_schocken.src.schocken.core.classification import classify
+from schocken.core.classification import classify
 from schocken.utils import normalize
 
 

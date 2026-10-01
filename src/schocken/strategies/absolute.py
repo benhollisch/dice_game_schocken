@@ -4,7 +4,7 @@ Absolute Strategien für das Schocken-Spiel.
 Enthält Strategien die unabhängig vom öffentlichen Tischzustand entscheiden.
 """
 
-from dice_game_schocken.src.schocken.core.typedefs import (
+from schocken.core.typedefs import (
     GameState,
     Decision,
     RoundContext,

@@ -6,8 +6,8 @@ sowie die Entscheidungslogik für den weiteren Spielverlauf.
 """
 
 from schocken.utils import normalize
-from dice_game_schocken.src.schocken.core.classification import classify
-from dice_game_schocken.src.schocken.core.typedefs import (
+from schocken.core.classification import classify
+from schocken.core.typedefs import (
     GameState,
     Decision,
     RoundContext,
