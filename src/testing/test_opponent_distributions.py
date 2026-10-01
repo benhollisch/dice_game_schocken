@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 from scipy import stats
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from schocken.classification import classify  # noqa: E402
 from schocken.distribution import (  # noqa: E402

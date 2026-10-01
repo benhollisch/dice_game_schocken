@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from schocken.classification import classify  # noqa: E402
 from schocken.distribution import (  # noqa: E402
@@ -31,7 +31,7 @@ from schocken.strategies.optimal import (  # noqa: E402
     Objective,
     OptimalStrategy,
 )
-from schocken.types import GameState, PublicPlayerState, RoundContext  # noqa: E402
+from schocken.typedefs import GameState, PublicPlayerState, RoundContext  # noqa: E402
 
 TOLERANCE = 1e-10
 DICE_OF_RANK = {classify(roll): roll for roll in roll_distribution(3)}
