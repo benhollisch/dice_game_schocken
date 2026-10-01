@@ -472,7 +472,6 @@ def value_before_roll(
         state["dice_to_roll"],
         state["rolls_left"],
         state["rolls_used"],
-        state["must_continue"],
     )
     if key in cache:
         return cache[key]
@@ -508,9 +507,8 @@ def value_after_roll(
 
     candidates = []
 
-    if state["rolls_left"] == 1 or not state["must_continue"]:
-        final = normalize((1,) * state["held_ones"] + roll)
-        candidates.append(objective(classify(final), state["rolls_used"] + 1))
+    final = normalize((1,) * state["held_ones"] + roll)
+    candidates.append(objective(classify(final), state["rolls_used"] + 1))
 
     if state["rolls_left"] > 1:
         for successor in next_states(state, roll):

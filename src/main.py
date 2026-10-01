@@ -20,7 +20,6 @@ tables = {
             rolls_left=m,
             rolls_used=0,
             visible_state=None,
-            must_continue=False,
             dice_to_roll=3,
         ),
         reference,
@@ -29,13 +28,20 @@ tables = {
 }
 
 players = [
-    Player("C1", StaticThresholdStrategy(threshold=(6, 6, 5))),
-    Player("C2", StaticThresholdStrategy(threshold=(1, 1, 2))),
-    Player("C3", StaticThresholdStrategy(threshold=(1, 1, 4))),
-    Player("C4", GreedyAllIn()),
-    Player("C5", OptimalStrategy(follower_distributions=tables)),
+    Player("Threshold 665 ", StaticThresholdStrategy(threshold=(6, 6, 5))),
+    Player("Threshold S2  ", StaticThresholdStrategy(threshold=(1, 1, 2))),
+    Player("Threshold S4  ", StaticThresholdStrategy(threshold=(1, 1, 4))),
+    Player("Greedy All-In ", GreedyAllIn()),
+    Player(
+        "Loss Optimizer",
+        OptimalStrategy(follower_distributions=tables, objective="not_lose"),
+    ),
+    Player(
+        "Lid Optimizer ",
+        OptimalStrategy(follower_distributions=tables, objective="expected_lids"),
+    ),
 ]
 
-results = simulate_games(players=players, n_games=100000)
+results = simulate_games(players=players, n_games=100)
 print(results)
 print_summary(results)

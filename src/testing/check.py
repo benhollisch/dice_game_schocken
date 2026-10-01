@@ -22,7 +22,6 @@ state = GameState(
     rolls_left=1,
     rolls_used=0,
     visible_state=None,
-    must_continue=False,
     dice_to_roll=3,
 )
 

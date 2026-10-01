@@ -41,7 +41,6 @@ def start_state(n_rolls: int, n_dice: int = 3) -> GameState:
         rolls_left=n_rolls,
         rolls_used=0,
         visible_state=None,
-        must_continue=False,
         dice_to_roll=n_dice,
     )
 

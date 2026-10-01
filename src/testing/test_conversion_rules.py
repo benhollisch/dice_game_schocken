@@ -51,7 +51,6 @@ def state_before_roll(budget: int, rolls_used: int, held_ones: int = 0) -> GameS
         rolls_left=budget - rolls_used,
         rolls_used=rolls_used,
         visible_state=(1,) * held_ones if held_ones else None,
-        must_continue=False,
         dice_to_roll=3 - held_ones,
     )
 
@@ -183,13 +182,6 @@ def test_stop_allowed_after_roll_following_conversion():
     options = offered_options(converted, (5, 4))
     assert options is not None
     assert any(o["action"] == "stop" for o in options)
-
-
-def test_next_states_never_sets_must_continue():
-    """Die Pflicht zum nächsten Wurf erfüllt bereits die Continue-Option selbst."""
-    start = state_before_roll(budget=3, rolls_used=0)
-    for roll in [(6, 6, 6), (6, 6, 1), (6, 6, 3), (1, 1, 4)]:
-        assert all(not s["must_continue"] for s in next_states(start, roll))
 
 
 if __name__ == "__main__":

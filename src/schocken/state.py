@@ -44,7 +44,8 @@ def next_states(state: GameState, roll: tuple[int, ...]) -> list[GameState]:
         total_ones = ones + k
         max_keep = total_ones if rolls_left > 0 else 0
 
-        for keep in range(0, max_keep + 1):
+        # Gedrehte Einsen werden immer gehalten: Gedreht wird nur, um sie zu halten.
+        for keep in range(k, max_keep + 1):
             held_ones = state["held_ones"] + keep
 
             visible_state = (1,) * held_ones if held_ones > 0 else None
@@ -55,9 +56,6 @@ def next_states(state: GameState, roll: tuple[int, ...]) -> list[GameState]:
                     rolls_left=rolls_left,
                     rolls_used=rolls_used,
                     visible_state=visible_state,
-                    must_continue=(
-                        rolls_left > 1 and (state["must_continue"] or (k > 0))
-                    ),
                     dice_to_roll=state["dice_to_roll"] - keep,
                 )
             )
@@ -99,21 +97,19 @@ def decide_after_roll(
         )
 
     options: list[Decision] = []
-
-    if not state["must_continue"]:
-        options.append(
-            Decision(
-                action="stop",
-                final=final,
-                rank=classify(final),
-                state={
-                    **state,
-                    "rolls_used": state["rolls_used"] + 1,
-                    "rolls_left": state["rolls_left"] - 1,
-                    "visible_state": final,
-                },
-            )
+    options.append(
+        Decision(
+            action="stop",
+            final=final,
+            rank=classify(final),
+            state={
+                **state,
+                "rolls_used": state["rolls_used"] + 1,
+                "rolls_left": state["rolls_left"] - 1,
+                "visible_state": final,
+            },
         )
+    )
 
     for next_state in next_states(state, roll):
         options.append(

@@ -43,7 +43,6 @@ def start_state(n_rolls: int) -> GameState:
         rolls_left=n_rolls,
         rolls_used=0,
         visible_state=None,
-        must_continue=False,
         dice_to_roll=3,
     )
 
@@ -308,7 +307,6 @@ AFTER_FIRST_ROLL = GameState(
     rolls_left=2,
     rolls_used=1,
     visible_state=None,
-    must_continue=False,
     dice_to_roll=3,
 )
 

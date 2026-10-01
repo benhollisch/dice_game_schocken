@@ -29,8 +29,8 @@ Obergrenze für alle Nachfolger fest (`round_max_rolls`).
 **Tie-Break:** erst weniger Würfe, dann frühere Position.
 
 **Sechsen-Konversion:** Im ersten und zweiten Wurf dürfen zwei Sechsen zu einer Eins
-bzw. drei Sechsen zu zwei Einsen gedreht werden, sofern noch ein Wurf folgt. Wer
-konvertiert, muss weiterwürfeln (`must_continue`).
+bzw. drei Sechsen zu zwei Einsen gedreht werden, sofern noch ein Wurf folgt. Wer dreht,
+muss den nächsten Wurf ausführen; danach darf er stoppen.
 
 **Deckel:** Der Rundengewinner bestimmt über sein Bild den Deckelwert, der Verlierer
 erhält die Deckel. Bei leerem Pot wandern sie aus dem Stapel des Gewinners. Schock-Out

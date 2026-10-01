@@ -32,7 +32,6 @@ def play_turn(
         rolls_left=max_rolls,
         rolls_used=0,
         visible_state=None,
-        must_continue=False,
         dice_to_roll=3,
     )
 

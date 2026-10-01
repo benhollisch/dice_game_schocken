@@ -15,7 +15,6 @@ class GameState(TypedDict):
     rolls_left: int
     rolls_used: int
     visible_state: tuple[int, ...] | None
-    must_continue: bool
     dice_to_roll: int
 
 

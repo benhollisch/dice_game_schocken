@@ -57,7 +57,6 @@ def _cache_key(state: GameState) -> tuple:
         state["held_ones"],
         state["dice_to_roll"],
         state["rolls_left"],
-        state["must_continue"],
     )
 
 
@@ -260,7 +259,6 @@ def opponent_distribution(
         rolls_left=n_rolls,
         rolls_used=0,
         visible_state=None,
-        must_continue=False,
         dice_to_roll=n_dice,
     )
     return rank_distribution(start, strategy)
