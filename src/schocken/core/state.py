@@ -6,8 +6,12 @@ sowie die Entscheidungslogik für den weiteren Spielverlauf.
 """
 
 from schocken.utils import normalize
-from schocken.classification import classify
-from schocken.typedefs import GameState, Decision, RoundContext
+from dice_game_schocken.src.schocken.core.classification import classify
+from dice_game_schocken.src.schocken.core.typedefs import (
+    GameState,
+    Decision,
+    RoundContext,
+)
 
 
 def next_states(state: GameState, roll: tuple[int, ...]) -> list[GameState]:

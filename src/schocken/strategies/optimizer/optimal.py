@@ -26,15 +26,20 @@ from typing import Literal
 
 import numpy as np
 
-from schocken.classification import classify
-from schocken.distribution import (
+from dice_game_schocken.src.schocken.core.classification import classify
+from dice_game_schocken.src.schocken.probability.distribution import (
     hidden_distribution,
     roll_distribution,
     survival_probability_with_ties,
 )
-from schocken.state import next_states
+from dice_game_schocken.src.schocken.core.state import next_states
 from schocken.strategies.base import BaseStrategy
-from schocken.typedefs import Decision, GameState, PublicPlayerState, RoundContext
+from dice_game_schocken.src.schocken.core.typedefs import (
+    Decision,
+    GameState,
+    PublicPlayerState,
+    RoundContext,
+)
 from schocken.utils import normalize
 
 Outcome = tuple[tuple[int, ...], int]

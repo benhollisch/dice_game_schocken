@@ -6,16 +6,19 @@ gegebenen Politik sowie Hilfsfunktionen zur Weiterverarbeitung der
 resultierenden Verteilungen.
 """
 
+# TODO: roll_, rank_, joint_, hidden_ in enumeration.py auslagern, distribution.py nur noch für analytische Berechnungen verwenden
+# TODO: increment_/ones_distribution in analytic.py auslagern, da sie nicht direkt mit der Enumeration zusammenhängen
+# TODO: nach survival.py auslagern, da die Funktionen nicht direkt mit der Enumeration zusammenhängen
 from collections import defaultdict
 from itertools import product
 from math import comb, factorial
 from bisect import bisect_right
 
-from schocken.state import decide_after_roll
+from dice_game_schocken.src.schocken.core.state import decide_after_roll
 from schocken.strategies.base import BaseStrategy
-from schocken.typedefs import GameState
+from dice_game_schocken.src.schocken.core.typedefs import GameState
 from schocken.utils import normalize
-from schocken.classification import classify
+from dice_game_schocken.src.schocken.core.classification import classify
 
 
 def roll_distribution(n_dice: int) -> dict[tuple[int, ...], float]:

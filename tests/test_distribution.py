@@ -150,9 +150,8 @@ def show_tie_break_effect(m: int = 3, own_rolls: int = 1) -> None:
         print(f"  {str(rank):<22} +{delta:.6f}")
 
 
-if __name__ == "__main__":
-    check_consistency()
-    show_roll_counts()
-    compare_survival()
-    check_invariants()
-    show_tie_break_effect()
+# check_consistency()
+# show_roll_counts()
+# compare_survival()
+# check_invariants()
+# show_tie_break_effect()
