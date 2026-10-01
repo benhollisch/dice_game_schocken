@@ -58,8 +58,14 @@ class RoundContext(TypedDict):
     Im Unterschied zu GameState beschreibt dieser Typ nicht den eigenen
     Wurfverlauf, sondern die Tischsituation: wer bereits gespielt hat, wie
     viele Spieler insgesamt aktiv sind und welches Wurfbudget gilt.
+
+    pot ist der Deckelstand im Stapel zu Rundenbeginn. lids enthält die
+    Deckelstände aller aktiven Spieler zu Rundenbeginn in Sitzreihenfolge
+    dieser Runde; Index i gehört zum Spieler mit turn_order i.
     """
 
     n_active: int
     max_rolls: int | None
     public_table_state: list[PublicPlayerState]
+    pot: int
+    lids: list[int]

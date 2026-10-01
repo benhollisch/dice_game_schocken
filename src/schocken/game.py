@@ -150,7 +150,9 @@ class Game:
             context = RoundContext(
                 n_active=len(players),
                 max_rolls=round_max_rolls,
-                public_table_state=public_table_state,
+                public_table_state=list(public_table_state),
+                pot=self.pot,
+                lids=[p.lids for p in ordered_players],
             )
 
             if round_max_rolls is None:
