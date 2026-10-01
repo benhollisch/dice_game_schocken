@@ -21,25 +21,25 @@ from fractions import Fraction as F
 import pytest
 from scipy import stats
 
-from schocken.classification import classify
-from schocken.distribution import (
+from schocken.core.classification import classify
+from schocken.probability.distribution import (
     hidden_distribution,
     joint_distribution,
     rank_distribution,
     survival_probability_with_ties,
 )
-from schocken.game import play_turn
-from schocken.state import decide_after_roll
+from schocken.engine.game import play_turn
+from schocken.core.state import decide_after_roll
 from schocken.strategies.absolute import (
     GreedyAllIn,
     StaticThresholdStrategy,
 )
-from schocken.strategies.optimal import (
+from schocken.strategies.optimizer.optimal import (
     Objective,
     OptimalStrategy,
     split_predecessors,
 )
-from schocken.typedefs import GameState, PublicPlayerState, RoundContext
+from schocken.core.typedefs import GameState, PublicPlayerState, RoundContext
 
 TOLERANCE = 1e-12
 P_VALUE_THRESHOLD = 1e-3

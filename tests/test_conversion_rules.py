@@ -11,9 +11,9 @@ Ausführen mit:  pytest src/testing/test_conversion_rules.py -v
 
 import sys
 
-from schocken.state import decide_after_roll, next_states
+from schocken.core.state import decide_after_roll, next_states
 from schocken.strategies.base import BaseStrategy
-from schocken.typedefs import Decision, GameState, RoundContext
+from schocken.core.typedefs import Decision, GameState, RoundContext
 
 
 class RecordingStrategy(BaseStrategy):

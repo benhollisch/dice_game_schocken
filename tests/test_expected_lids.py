@@ -14,21 +14,21 @@ from itertools import product
 
 import pytest
 
-from schocken.classification import classify
-from schocken.distribution import (
+from schocken.core.classification import classify
+from schocken.probability.distribution import (
     hidden_distribution,
     joint_distribution,
     roll_distribution,
 )
-from schocken.game import Game, Player, compare_results
-from schocken.state import decide_after_roll
+from schocken.engine.game import Game, Player, compare_results
+from schocken.core.state import decide_after_roll
 from schocken.strategies.absolute import GreedyAllIn
-from schocken.strategies.optimal import (
+from schocken.strategies.optimizer.optimal import (
     ExpectedLidsObjective,
     Objective,
     OptimalStrategy,
 )
-from schocken.typedefs import GameState, PublicPlayerState, RoundContext
+from schocken.core.typedefs import GameState, PublicPlayerState, RoundContext
 
 TOLERANCE = 1e-10
 DICE_OF_RANK = {classify(roll): roll for roll in roll_distribution(3)}

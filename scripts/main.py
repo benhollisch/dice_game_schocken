@@ -4,13 +4,13 @@ Einstiegspunkt für die Schocken-Simulation.
 Konfiguration der Spieler und Strategien sowie Start der Simulation.
 """
 
-from schocken.game import Player
-from schocken.simulation import simulate_games
-from schocken.distribution import joint_distribution
+from schocken.engine.game import Player
+from schocken.engine.simulation import simulate_games
+from schocken.probability.distribution import joint_distribution
 from schocken.strategies.absolute import StaticThresholdStrategy, GreedyAllIn
-from schocken.strategies.optimal import OptimalStrategy
-from schocken.typedefs import GameState
-from analysis import print_summary
+from schocken.strategies.optimizer.optimal import OptimalStrategy
+from schocken.core.typedefs import GameState
+from schocken.analysis.statistics import print_summary
 
 reference = GreedyAllIn()
 tables = {

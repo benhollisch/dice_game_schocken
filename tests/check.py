@@ -1,12 +1,12 @@
-from schocken.distribution import (
+from schocken.probability.distribution import (
     roll_distribution,
     rank_distribution,
     ones_distribution,
 )
-from schocken.classification import classify
-import schocken.state as state_module
+from schocken.core.classification import classify
+import schocken.core.state as state_module
 from schocken.strategies.absolute import GreedyAllIn
-from schocken.typedefs import GameState
+from schocken.core.typedefs import GameState
 
 d = roll_distribution(3)
 print(len(d), sum(d.values()))

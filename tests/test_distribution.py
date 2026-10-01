@@ -1,6 +1,6 @@
 """Prüfskript für joint_distribution und survival_probability_with_ties."""
 
-from schocken.distribution import (
+from schocken.probability.distribution import (
     cumulative_table,
     joint_distribution,
     opponent_distribution,
@@ -10,8 +10,8 @@ from schocken.distribution import (
 from schocken.strategies.absolute import (
     StaticThresholdStrategy,
 )
-from schocken.typedefs import GameState
-from schocken.classification import classify
+from schocken.core.typedefs import GameState
+from schocken.core.classification import classify
 
 STRATEGY = StaticThresholdStrategy(threshold=classify((6, 5, 5)))
 # STRATEGY = GreedyAllIn()

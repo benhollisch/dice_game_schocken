@@ -1,7 +1,7 @@
 """Prüfskript für die Gegnerverteilungen in distribution.py."""
 
 from schocken.strategies.absolute import StaticThresholdStrategy
-from schocken.distribution import (
+from schocken.probability.distribution import (
     opponent_distribution,
     opponent_tables,
     survival_probability,
