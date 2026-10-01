@@ -34,11 +34,11 @@ from schocken.strategies.absolute import (
     GreedyAllIn,
     StaticThresholdStrategy,
 )
-from schocken.strategies.optimizer.optimal import (
+from schocken.strategies.optimizer.objectives import (
     Objective,
-    OptimalStrategy,
     split_predecessors,
 )
+from schocken.strategies.optimizer.strategy import OptimalStrategy
 from schocken.core.typedefs import GameState, PublicPlayerState, RoundContext
 
 TOLERANCE = 1e-12

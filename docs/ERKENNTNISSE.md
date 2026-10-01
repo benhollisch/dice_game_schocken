@@ -106,7 +106,7 @@ zusätzlichen Wurf ignorieren. GreedyAllIn stoppt nie (außer bei Schock-Out) un
 schädlichen Zusatzwurf nehmen.
 
 **Konsequenz 1:** Unter der optimalen Politik muss der Check verletzungsfrei durchlaufen.
-Er eignet sich als Regressionstest für `strategies/optimal.py`.
+Er eignet sich als Regressionstest für `strategies/optimizer/strategy.py`.
 
 **Konsequenz 2:** GreedyAllIn ist als Gegnermodell **nicht konservativ**. Es unterschätzt
 die Gefahr am unteren Rangende — also genau dort, wo ein Spieler mit mittelmäßigem Bild

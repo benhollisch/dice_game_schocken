@@ -23,11 +23,11 @@ from schocken.probability.enumeration import (
 from schocken.engine.game import Game, Player, compare_results
 from schocken.core.state import decide_after_roll
 from schocken.strategies.absolute import GreedyAllIn
-from schocken.strategies.optimizer.optimal import (
+from schocken.strategies.optimizer.objectives import (
     ExpectedLidsObjective,
     Objective,
-    OptimalStrategy,
 )
+from schocken.strategies.optimizer.strategy import OptimalStrategy
 from schocken.core.typedefs import GameState, PublicPlayerState, RoundContext
 
 TOLERANCE = 1e-10

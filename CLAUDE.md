@@ -63,10 +63,9 @@ src/schocken/
     ├── absolute.py       # GreedyAllIn, StaticThresholdStrategy
     ├── relative.py       # PublicThreshold, AdaptiveGreedy, HybridThreshold, DangerAware
     └── optimizer/
-        ├── optimal.py    # Objective, ExpectedLidsObjective, OptimalStrategy
-        ├── strategy.py   # value_before_roll(), value_after_roll() (Bellman-Wertfunktion)
-        ├── bellman.py    # (leer)
-        └── objectives.py # (leer)
+        ├── objectives.py # Objective (Option A), ExpectedLidsObjective (Option B), split_predecessors()
+        ├── bellman.py    # value_before_roll(), value_after_roll() (Bellman-Wertfunktion)
+        └── strategy.py   # OptimalStrategy
 tests/                    # pytest-Tests und Prüfskripte (check*.py)
 scripts/
 └── main.py               # Einstiegspunkt der Simulation
@@ -153,7 +152,7 @@ und beantwortete nur die Frage nach der besten ersten Abweichung.
 
 ## Offene Punkte
 
-- [ ] **`Objective` in `strategies/optimal.py` umbauen** auf `1 − Π_j (1 − S_j)` mit den
+- [ ] **`Objective` in `strategies/optimizer/objectives.py` umbauen** auf `1 − Π_j (1 − S_j)` mit den
       drei Gegnergruppen; verdeckte Vorgänger über bedingte Verteilung einbeziehen
 - [ ] Tie-Break gegen offene Vorgänger: Gleichstand mit weniger Würfen ist kein Verlust
 - [ ] Gleichung (3) im Paper-Entwurf korrigieren
