@@ -1,7 +1,7 @@
 # Erkenntnisse — Schocken-Simulation
 
 Sammlung der analytischen und methodischen Befunde aus der Modellentwicklung.
-Stand: 30.09.2026
+Stand: 01.10.2026
 
 ---
 
@@ -247,3 +247,202 @@ Gleichstand über die frühere Position gewinnt.
 **Nicht der Erwartungswert zählt.** „Im Mittel Schock 3,5“ ist keine geeignete
 Zielgröße — entscheidend ist die Wahrscheinlichkeit, schlechter zu sein, und die hängt an
 der ganzen Verteilung.
+
+## 12. Nicht-Verlieren am vollen Tisch: das Fünf-Spieler-Beispiel
+
+### Ausgangslage
+
+Fünf Spieler, man selbst sitzt auf Position 5. Alle vier Vorgänger haben ihr Budget von
+drei Würfen ausgeschöpft und zeigen je `(1, 1)` — sie sind teilverdeckt mit h = 2. Ihr
+verdeckter Würfel d ist gleichverteilt und von ihrer Strategie unabhängig (Abschnitt 11).
+Jeder Vorgänger hat damit entweder einen Schock-Out (d = 1) oder einen Schock mit
+Beizahl d.
+
+Die Wahrscheinlichkeit, dass mindestens ein Vorgänger einen Schock-Out verdeckt hält, ist
+
+    1 − (5/6)^4 = 671/1296 ≈ 51,8 %
+
+### Die Entscheidung nach dem zweiten Wurf
+
+Man selbst hat nach dem zweiten Wurf einen Schock mit Beizahl a und einen Wurf übrig.
+
+**Stoppen.** Man hat zwei Würfe gebraucht, die Vorgänger drei. Gegen einen Vorgänger
+besteht man, wenn seine Beizahl schlechter ist oder gleich — den Gleichstand gewinnt man
+über die geringere Wurfzahl. Damit ist S_j = (a − 1)/6 und
+
+    P(Verlierer | Stopp) = ((7 − a) / 6)^4
+
+**Weiterwürfeln** mit dem einen freien Würfel, Ergebnis e. Man braucht dann ebenfalls drei
+Würfe und verliert jeden Gleichstand, weil die Vorgänger früher an der Reihe waren:
+
+| e | eigenes Endbild | Vorgänger schlechter, wenn | P(Verlierer \| e) |
+|---|---|---|---|
+| 1 | Schock-Out | d ≠ 1 | (1/6)^4 = 1/1296 |
+| 6 | Schock 6 | d ∈ {2, …, 5} | (2/6)^4 = 1/81 |
+| 5 | Schock 5 | d ∈ {2, 3, 4} | (3/6)^4 = 1/16 |
+| 4 | Schock 4 | d ∈ {2, 3} | (4/6)^4 = 16/81 |
+| 3 | Schock 3 | d = 2 | (5/6)^4 = 625/1296 |
+| 2 | Schock 2 | nie | 1 |
+
+Gemittelt über e: P(Verlierer | Weiterwürfeln) = 2275/7776 ≈ 29,3 %.
+
+**Vergleich:**
+
+| Bild nach Wurf 2 | P(Verlierer) bei Stopp | bei Weiterwürfeln | Entscheidung |
+|---|---|---|---|
+| `(1,1,6)` | 1/1296 ≈ 0,1 % | 29,3 % | stoppen |
+| `(1,1,5)` | 1/81 ≈ 1,2 % | 29,3 % | stoppen |
+| `(1,1,4)` | 1/16 ≈ 6,3 % | 29,3 % | stoppen |
+| `(1,1,3)` | 16/81 ≈ 19,8 % | 29,3 % | stoppen |
+| `(1,1,2)` | 625/1296 ≈ 48,2 % | 29,3 % | weiterwürfeln |
+
+Die Stoppschwelle liegt bei Schock 3, also tiefer, als die Intuition „mindestens Schock 4“
+nahelegt.
+
+### Der Wert des Tie-Breaks
+
+Derselbe Schock 5 hat nach zwei Würfen ein Verliererrisiko von 1/81 ≈ 1,2 %, nach drei
+Würfen von 1/16 ≈ 6,3 % — das Fünffache. Ein Wurf weniger ist hier so viel wert wie eine
+ganze Beizahlstufe: Schock 5 nach zwei Würfen ist exakt so sicher wie Schock 6 nach drei.
+
+Allgemein verschiebt der gewonnene Gleichstand die Überlebenswahrscheinlichkeit gegen
+jeden Vorgänger um 1/6. Bei vier Vorgängern potenziert sich das.
+
+### Warum das Option-A-Logik ist
+
+„Man muss nur nicht der Schlechteste sein, den Tisch räumt jemand anders ab“ ist genau die
+korrigierte Zielfunktion aus Abschnitt 10. Gewinnen ist hier wertlos: Mit 51,8 % räumt
+ohnehin ein Vorgänger ab, und die eigene Bildhöhe spielt nur gegen die Vorgänger eine
+Rolle, nicht für einen eigenen Sieg.
+
+Die korrigierte `OptimalStrategy` muss diese Stopptabelle reproduzieren. Das Beispiel
+eignet sich als Regressionstest.
+
+### Kein Unterschied bei eigenem Schock-Out
+
+Würfelt man selbst einen Schock-Out, verliert man nur, wenn alle vier Vorgänger ebenfalls
+einen verdeckten Schock-Out haben (1/1296) — dann gewinnen sie jeden Gleichstand über die
+Position. Hat mindestens ein Vorgänger einen gewöhnlichen Schock, ist er der Verlierer.
+Dieser Fall steckt bereits in der Zeile e = 1 und ändert die Entscheidung nicht.
+
+## 13. Option B: erwartete Deckelveränderung
+
+### Zielgröße
+
+Option B minimiert die erwartete Veränderung des eigenen Deckelstands in der Runde.
+Deckel werden linear gezählt.
+
+### Drei Ausgänge, nicht zwei
+
+Aus Sicht eines Spielers endet eine Runde auf eine von drei Arten: Er ist Verlierer,
+Gewinner oder unbeteiligt. Was mit seinen Deckeln geschieht, hängt zusätzlich davon ab, ob
+am Tisch ein Schock-Out fällt und ob der Pot noch Deckel enthält:
+
+| Ausgang | Pot > 0 (Phase 1) | Pot leer (Phase 2) | Schock-Out am Tisch |
+|---|---|---|---|
+| Verlierer | + min(v(Gewinner), Pot) | + min(v(Gewinner), D_Gewinner) | + alle übrigen Deckel im Spiel |
+| Gewinner | 0 | − min(v(eigen), D_eigen) | − D_eigen |
+| unbeteiligt | 0 | 0 | − D_eigen |
+
+Daraus:
+
+    E[Δ] = Σ_{Verlierer-Ausgänge} P · erhalten
+         − P(Gewinner, kein Schock-Out) · min(v(ρ), D_eigen)   [nur Phase 2]
+         − P(nicht Verlierer, Schock-Out am Tisch) · D_eigen
+
+Eine erste Fassung dieser Formel kannte nur Verlierer und Gewinner. Der dritte Term fehlte:
+Fällt ein Schock-Out und man ist nicht Verlierer, gehen die eigenen Deckel ebenfalls an den
+Verlierer — man ist raus, auch ohne selbst gewonnen zu haben.
+
+### Schock-Out reduziert Option B auf Option A
+
+Fällt am Tisch ein Schock-Out, ist es für einen Spieler gleichgültig, ob er Gewinner oder
+unbeteiligt ist: In beiden Fällen verliert er alle Deckel und ist raus. Es zählt nur die
+Unterscheidung Verlierer oder nicht. In diesem Zweig ist Option B dieselbe Zielfunktion
+wie Option A, nur mit höherem Einsatz.
+
+Die Unterscheidung nach Bildhöhe — der Gewinnerterm mit min(v(ρ), D) — wirkt nur in Runden
+ohne Schock-Out. Im Fünf-Spieler-Beispiel aus Abschnitt 12 ist Nicht-Verlieren in Option B
+deshalb noch wichtiger als in Option A: Mit 51,8 % räumt ein Vorgänger ab, und wer nicht
+Verlierer ist, ist danach raus.
+
+### Phase 1: Option A mit gewichteten Verlusten
+
+Solange der Pot Deckel enthält, bringt Gewinnen direkt nichts — die Deckel kommen aus dem
+Pot. Das eigene Bild zählt nur, um nicht Verlierer zu sein. Option B unterscheidet sich von
+Option A dann nur darin, wie teuer ein Verlust ist: Gegen eine Hausnummer kostet er einen
+Deckel, gegen einen Schock 6 bis zu sechs.
+
+### Phase 2: Die Bildhöhe bekommt einen Wert
+
+Ist der Pot leer, gibt der Gewinner eigene Deckel ab. Ein sicheres Bild wird dadurch nicht
+wertlos, ein höheres aber wertvoller. Die Deckelgrenze kehrt diesen Anreiz je nach eigenem
+Stand um:
+
+| Eigene Deckel | Gewinnen mit Straße | Gewinnen mit Schock 6 | Anreiz, auf Höhe zu spielen |
+|---|---|---|---|
+| 1 | −1 | −1 | keiner |
+| 3 | −2 | −3 | gering |
+| 8 | −2 | −6 | deutlich |
+
+Wer viele Deckel hat, profitiert davon, ein sicheres Bild zu verbessern. Wer wenige hat,
+sichert nur ab. Die Abhängigkeit vom eigenen Deckelstand fällt aus der Zielfunktion heraus,
+ohne dass sie hineinkonstruiert werden muss.
+
+Gewinner- und Verliererterm ziehen in Phase 2 oft gegeneinander: Weiterwürfeln mit einer
+Straße erhöht die Chance auf ein hohes Bild, aber auch das Risiko, auf eine Hausnummer
+abzurutschen und Verlierer zu werden.
+
+### Rechnung unter Unabhängigkeit
+
+Jedem Ergebnis wird ein Vergleichsschlüssel (Rang, Wurfzahl, Position) zugeordnet; kleiner
+ist besser. Unter allen Spielern ist diese Ordnung strikt, weil Positionen verschieden
+sind. Für das eigene Ergebnis mit Schlüssel x und Gegner k mit Schlüssel K_k gilt:
+
+    P(Verlierer)                       = Π_k P(K_k < x)
+    P(Gewinner)                        = Π_k P(K_k > x)
+    P(Verlierer, Gewinner = j mit o)   = P_j(o) · 1[o < x] · Π_{k≠j} P(o < K_k < x)
+    P(Schock-Out-Gewinner vor mir)     = 1 − Π_k (1 − P(K_k < x, Rang_k = Schock-Out))
+
+Die letzte Zeile nutzt, dass Schock-Outs die kleinsten Schlüssel überhaupt sind: Hat
+irgendein Gegner einen Schock-Out vor einem selbst, ist der beste Gegner ein Schock-Out.
+
+Mit einer globalen Nummerierung aller Schlüssel und kumulierten Wahrscheinlichkeiten je
+Gegner lassen sich alle Terme vektorisiert berechnen.
+
+### Benötigte Information
+
+`RoundContext` braucht zusätzlich den Pot und die Deckelstände aller aktiven Spieler in
+Sitzreihenfolge — auch die der Nachfolger, die im `public_table_state` noch nicht stehen.
+Beides ist am Tisch öffentlich.
+
+### Regressionstests
+
+- Die Wahrscheinlichkeit P(Verlierer) aus der Option-B-Rechnung muss exakt 1 minus dem Wert
+  der Option-A-Zielfunktion entsprechen.
+- Ist jeder Deckelwert 1, der Pot ausreichend groß und Schock-Out ohne Sonderregel, ist
+  E[Δ] = P(Verlierer); Option B muss dann dieselben Entscheidungen treffen wie Option A.
+
+## 14. Lineare Deckel gegen die eigentliche Zielgröße
+
+Die eigentliche Auszahlung ist binär: Wer das Finale verliert, zahlt eine Runde. Deckel
+sind ein Zwischenstand auf dem Weg dorthin. Lineares Zählen ist rational, wenn Deckel die
+Zielgröße sind. Ob sie es sind, ist offen.
+
+Zwei Stellen, an denen die lineare Zählung die eigentliche Zielgröße verfehlt:
+
+- **Bei null.** Wer in Phase 2 auf null kommt, scheidet aus der Halbzeit aus und riskiert
+  nichts mehr. Linear ist der Schritt von 1 auf 0 so viel wert wie der von 9 auf 8. Mit
+  wenigen Deckeln verschiebt sich das Ziel dadurch von „nicht verlieren“ ein Stück zu
+  „gewinnen“, ohne dass ein hohes Bild nötig wäre — die Bildhöhe ist wegen der
+  Deckelgrenze ohnehin wertlos.
+- **Beim Halbzeitverlust.** Der Schritt auf alle Deckel entscheidet die Halbzeit.
+
+Anders zu spielen, wenn man nah an einer dieser Grenzen steht, ist nicht emotional, sondern
+die Optimierung der richtigen Zielgröße statt eines Ersatzmaßes. Aus dem Turnierpoker ist
+der Unterschied zwischen Chip-Erwartungswert und Turniergewinnwahrscheinlichkeit bekannt.
+
+Eine angenommene Funktionsform, etwa quadratisch in den Deckeln, wäre willkürlich. Für
+Option C lässt sich der Wert eines Deckelstands berechnen: als Wahrscheinlichkeit, die
+Halbzeit von diesem Stand aus zu verlieren. Die Nichtlinearität ist dann ein Ergebnis,
+keine Annahme.

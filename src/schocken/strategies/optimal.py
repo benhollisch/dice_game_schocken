@@ -21,6 +21,11 @@ Gegner zerfallen in drei Gruppen:
   unterstellten Referenzstrategie beim geltenden Wurfbudget
 """
 
+from collections.abc import Callable
+from typing import Literal
+
+import numpy as np
+
 from schocken.classification import classify
 from schocken.distribution import (
     hidden_distribution,
@@ -29,11 +34,12 @@ from schocken.distribution import (
 )
 from schocken.state import next_states
 from schocken.strategies.base import BaseStrategy
-from schocken.typedefs import Decision, GameState, PublicPlayerState, RoundContext
+from schocken.types import Decision, GameState, PublicPlayerState, RoundContext
 from schocken.utils import normalize
 
 Outcome = tuple[tuple[int, ...], int]
 JointDistribution = dict[Outcome, float]
+ObjectiveFn = Callable[[tuple[int, ...], int], float]
 
 
 def beats(
@@ -183,9 +189,268 @@ class Objective:
         return 1.0 - p_all_better
 
 
+# --------------------------------------------------------------------------
+# Option B: erwartete Deckelveränderung
+# --------------------------------------------------------------------------
+
+SHOCK_OUT: tuple[int, ...] = (0, 0)
+
+Key = tuple[tuple[int, ...], int, int]
+
+
+def rank_lid_value(rank: tuple[int, ...]) -> int:
+    """
+    Deckelwert eines Rangs, analog zu classification.lid_value().
+
+    Schock mit Beizahl a: a Deckel, General: 3, Straße: 2, Hausnummer: 1.
+    Schock-Out wird von der Zielfunktion gesondert behandelt; hier liefert er
+    wie lid_value() den Wert 1.
+
+    Args:
+        rank: Rang aus classify().
+
+    Returns:
+        Anzahl der zu verteilenden Deckel.
+    """
+    category = rank[0]
+    if category == 0:
+        return 1 if rank == SHOCK_OUT else 7 - rank[1]
+    if category == 1:
+        return 3
+    if category == 2:
+        return 2
+    return 1
+
+
+def build_key_universe(
+    n_positions: int, max_rolls: int = 3, n_dice: int = 3
+) -> tuple[list[Key], dict[Key, int]]:
+    """
+    Nummeriert alle Vergleichsschlüssel (Rang, Wurfzahl, Position) aufsteigend.
+
+    Kleiner ist besser, wie in compare_results(). Da jede Position höchstens
+    einem Spieler gehört, ist die Ordnung unter allen Spielern strikt.
+
+    Args:
+        n_positions: Anzahl der Sitzplätze in der Runde.
+        max_rolls: Höchste mögliche Wurfzahl.
+        n_dice: Anzahl der Würfel im Spiel.
+
+    Returns:
+        Sortierte Schlüsselliste und Zuordnung Schlüssel → Index.
+    """
+    ranks = sorted({classify(roll) for roll in roll_distribution(n_dice)})
+    keys = sorted(
+        (rank, rolls, position)
+        for rank in ranks
+        for rolls in range(1, max_rolls + 1)
+        for position in range(n_positions)
+    )
+    return keys, {key: i for i, key in enumerate(keys)}
+
+
+class ExpectedLidsObjective:
+    """
+    Zielfunktion für die erwartete Deckelveränderung (Option B).
+
+    Bewertet ein eigenes Endergebnis mit der negativen erwarteten Veränderung
+    des eigenen Deckelstands in dieser Runde; größer ist also besser. Drei
+    Ausgänge werden unterschieden:
+
+    - Verlierer: erhält min(v, Pot) in Phase 1, min(v, D_Gewinner) in Phase 2,
+      bei Schock-Out des Gewinners alle übrigen Deckel im Spiel
+    - Gewinner: gibt in Phase 2 min(v(eigen), D_eigen) ab, bei eigenem
+      Schock-Out alle eigenen Deckel
+    - unbeteiligt: keine Veränderung, außer bei Schock-Out am Tisch, dann
+      gehen alle eigenen Deckel an den Verlierer
+
+    Gegner werden als unabhängig angenommen.
+
+    Args:
+        opponents: Je Gegner (Position, Deckelstand, gemeinsame Verteilung
+            über Rang und Wurfzahl). Für Nachfolger darf statt der Verteilung
+            None stehen; sie wird dann je Wurfbudget aus
+            follower_distributions entnommen.
+        position: Eigene Position in der Runde.
+        n_positions: Anzahl der Spieler in der Runde.
+        pot: Deckel im Stapel zu Rundenbeginn.
+        own_lids: Eigener Deckelstand zu Rundenbeginn.
+        total_lids: Alle Deckel im Spiel, Pot eingeschlossen.
+        follower_distributions: Nachfolgerverteilungen je Wurfbudget.
+        is_opener: Ob die eigene Wurfzahl das Budget der Nachfolger setzt.
+        max_rolls: Wurfbudget der Runde, sofern bereits festgelegt.
+        value_fn: Deckelwert eines Rangs.
+        shock_out_clears: Ob Schock-Out alle Deckel an den Verlierer überträgt.
+    """
+
+    def __init__(
+        self,
+        opponents: list[tuple[int, int, JointDistribution | None]],
+        position: int,
+        n_positions: int,
+        pot: int,
+        own_lids: int,
+        total_lids: int,
+        follower_distributions: dict[int, JointDistribution],
+        is_opener: bool,
+        max_rolls: int = 3,
+        value_fn: Callable[[tuple[int, ...]], int] = rank_lid_value,
+        shock_out_clears: bool = True,
+    ):
+        self.opponents = opponents
+        self.position = position
+        self.pot = pot
+        self.own_lids = own_lids
+        self.total_lids = total_lids
+        self.follower_distributions = follower_distributions
+        self.is_opener = is_opener
+        self.max_rolls = max_rolls
+        self.value_fn = value_fn
+        self.shock_out_clears = shock_out_clears
+
+        self.keys, self.index = build_key_universe(n_positions, max_rolls=3)
+        self.is_shock_out = np.array(
+            [shock_out_clears and key[0] == SHOCK_OUT for key in self.keys]
+        )
+        self._arrays: dict[int, tuple[np.ndarray, ...]] = {}
+        self._memo: dict[Outcome, float] = {}
+
+    # ---------------------------------------------------------------- Aufbau
+
+    def _gain(self, opponent_lids: int) -> np.ndarray:
+        """Deckel, die man als Verlierer erhält, je Schlüssel des Gewinners."""
+        gains = np.empty(len(self.keys))
+        for i, (rank, _, _) in enumerate(self.keys):
+            value = self.value_fn(rank)
+            if self.is_shock_out[i]:
+                gains[i] = self.total_lids - self.own_lids
+            elif self.pot > 0:
+                gains[i] = min(value, self.pot)
+            else:
+                gains[i] = min(value, opponent_lids)
+        return gains
+
+    def _opponent_arrays(self, budget: int) -> tuple[np.ndarray, ...]:
+        """
+        Wahrscheinlichkeitsvektoren und kumulierte Summen aller Gegner.
+
+        Hängt nur dann vom Budget ab, wenn Nachfolger beteiligt sind; daher
+        einmal je Budget aufgebaut und zwischengespeichert.
+        """
+        if budget in self._arrays:
+            return self._arrays[budget]
+
+        n_keys = len(self.keys)
+        probabilities = np.zeros((len(self.opponents), n_keys))
+        gains = np.zeros((len(self.opponents), n_keys))
+
+        for row, (position, lids, distribution) in enumerate(self.opponents):
+            if distribution is None:
+                distribution = self.follower_distributions[budget]
+            for (rank, rolls), p in distribution.items():
+                probabilities[row, self.index[(rank, rolls, position)]] += p
+            gains[row] = self._gain(lids)
+
+        zero_column = np.zeros((len(self.opponents), 1))
+        cumulative = np.hstack([zero_column, np.cumsum(probabilities, axis=1)])
+        cumulative_shock_out = np.hstack(
+            [zero_column, np.cumsum(probabilities * self.is_shock_out, axis=1)]
+        )
+
+        arrays = (probabilities, gains, cumulative, cumulative_shock_out)
+        self._arrays[budget] = arrays
+        return arrays
+
+    # ------------------------------------------------------------ Bewertung
+
+    def outcome_probabilities(
+        self, rank: tuple[int, ...], rolls_used: int
+    ) -> dict[str, float]:
+        """
+        Zerlegt ein eigenes Endergebnis in die Wahrscheinlichkeiten der Ausgänge.
+
+        Args:
+            rank: Eigener Endrang.
+            rolls_used: Eigene Wurfzahl.
+
+        Returns:
+            Dictionary mit p_lose, p_win, p_lose_shock_out (Verlierer gegen
+            einen Schock-Out), p_shock_out_before (ein Gegner hat einen
+            Schock-Out vor einem selbst), expected_received (erwartete
+            erhaltene Deckel, über alle Verlierer-Ausgänge summiert).
+        """
+        budget = rolls_used if self.is_opener else self.max_rolls
+        probabilities, gains, cumulative, cumulative_shock_out = self._opponent_arrays(
+            budget
+        )
+        x = self.index[(rank, rolls_used, self.position)]
+
+        below = cumulative[:, x]
+        p_lose = float(np.prod(below))
+        p_win = float(np.prod(1.0 - cumulative[:, x + 1]))
+        p_shock_out_before = 1.0 - float(np.prod(1.0 - cumulative_shock_out[:, x]))
+
+        # between[k, t]: P(t < K_k < x) für alle Schlüssel t unterhalb von x
+        between = below[:, None] - cumulative[:, 1 : x + 1]
+
+        expected_received = 0.0
+        p_lose_shock_out = 0.0
+        for j in range(len(self.opponents)):
+            others = np.prod(np.delete(between, j, axis=0), axis=0)
+            weight = probabilities[j, :x] * others
+            expected_received += float(weight @ gains[j, :x])
+            p_lose_shock_out += float(weight @ self.is_shock_out[:x])
+
+        return {
+            "p_lose": p_lose,
+            "p_win": p_win,
+            "p_lose_shock_out": p_lose_shock_out,
+            "p_shock_out_before": p_shock_out_before,
+            "expected_received": expected_received,
+        }
+
+    def expected_change(self, rank: tuple[int, ...], rolls_used: int) -> float:
+        """
+        Erwartete Veränderung des eigenen Deckelstands; kleiner ist besser.
+
+        Args:
+            rank: Eigener Endrang.
+            rolls_used: Eigene Wurfzahl.
+
+        Returns:
+            Erwartete Deckelveränderung in dieser Runde.
+        """
+        if not self.opponents:
+            return 0.0
+
+        parts = self.outcome_probabilities(rank, rolls_used)
+
+        if self.shock_out_clears and rank == SHOCK_OUT:
+            give_as_winner = self.own_lids
+        elif self.pot > 0:
+            give_as_winner = 0
+        else:
+            give_as_winner = min(self.value_fn(rank), self.own_lids)
+
+        cleared_as_bystander = parts["p_shock_out_before"] - parts["p_lose_shock_out"]
+
+        return (
+            parts["expected_received"]
+            - parts["p_win"] * give_as_winner
+            - cleared_as_bystander * self.own_lids
+        )
+
+    def __call__(self, rank: tuple[int, ...], rolls_used: int) -> float:
+        """Negative erwartete Deckelveränderung; größer ist besser."""
+        key = (rank, rolls_used)
+        if key not in self._memo:
+            self._memo[key] = -self.expected_change(rank, rolls_used)
+        return self._memo[key]
+
+
 def value_before_roll(
     state: GameState,
-    objective: Objective,
+    objective: ObjectiveFn,
     cache: dict | None = None,
 ) -> float:
     """
@@ -223,7 +488,7 @@ def value_before_roll(
 def value_after_roll(
     state: GameState,
     roll: tuple[int, ...],
-    objective: Objective,
+    objective: ObjectiveFn,
     cache: dict | None = None,
 ) -> float:
     """
@@ -262,6 +527,7 @@ class OptimalStrategy(BaseStrategy):
 
     Args:
         follower_distributions: Tabellierte Nachfolgerverteilungen je Wurfbudget.
+        objective: "not_lose" (Option A) oder "expected_lids" (Option B).
         max_rolls: Wurfbudget, falls der Kontext noch keines festlegt.
         fallback_players: Spielerzahl, falls kein Kontext übergeben wird
             (z.B. bei der Enumeration in distribution.py). Im Spiel ohne Wirkung.
@@ -270,10 +536,12 @@ class OptimalStrategy(BaseStrategy):
     def __init__(
         self,
         follower_distributions: dict[int, JointDistribution],
+        objective: Literal["not_lose", "expected_lids"] = "not_lose",
         max_rolls: int = 3,
         fallback_players: int = 2,
     ):
         self.follower_distributions = follower_distributions
+        self.objective = objective
         self.max_rolls = max_rolls
         self.fallback_players = fallback_players
 
@@ -288,7 +556,7 @@ class OptimalStrategy(BaseStrategy):
         cache: dict = {}
 
         best: Decision | None = None
-        best_value = -1.0
+        best_value = float("-inf")
 
         for option in options:
             if option["action"] == "stop":
@@ -304,9 +572,13 @@ class OptimalStrategy(BaseStrategy):
             raise RuntimeError("Keine gültige Option verfügbar.")
         return best
 
-    def build_objective(self, context: RoundContext | None) -> Objective:
+    def build_objective(self, context: RoundContext | None) -> ObjectiveFn:
         """
         Baut die Zielfunktion aus dem aktuellen Rundenkontext.
+
+        Ohne Kontext (Enumeration in distribution.py) fehlen Pot und
+        Deckelstände; dann wird auch für Option B die Zielfunktion von
+        Option A verwendet.
 
         Args:
             context: Rundenkontext aus Sicht des Spielers am Zug.
@@ -317,14 +589,56 @@ class OptimalStrategy(BaseStrategy):
         table = context["public_table_state"] if context else []
         n_active = context["n_active"] if context else self.fallback_players
         round_budget = context["max_rolls"] if context else None
+        max_rolls = round_budget if round_budget is not None else self.max_rolls
+        position = len(table)
+
+        if self.objective == "expected_lids" and context is not None:
+            return self._build_expected_lids(context, table, n_active, max_rolls)
 
         open_predecessors, hidden_predecessors = split_predecessors(table)
 
         return Objective(
             open_predecessors=open_predecessors,
             hidden_predecessors=hidden_predecessors,
-            n_followers=n_active - len(table) - 1,
+            n_followers=n_active - position - 1,
             follower_distributions=self.follower_distributions,
-            is_opener=not table,
-            max_rolls=round_budget if round_budget is not None else self.max_rolls,
+            is_opener=position == 0,
+            max_rolls=max_rolls,
+        )
+
+    def _build_expected_lids(
+        self,
+        context: RoundContext,
+        table: list[PublicPlayerState],
+        n_active: int,
+        max_rolls: int,
+    ) -> ExpectedLidsObjective:
+        """Baut die Zielfunktion für Option B."""
+        lids = context["lids"]
+        position = len(table)
+        opponents: list[tuple[int, int, JointDistribution | None]] = []
+
+        for entry in table:
+            visible = entry["visible_state"]
+            seat = entry["turn_order"]
+            if visible is not None and len(visible) == 3:
+                distribution = {(classify(visible), entry["rolls_used"]): 1.0}
+            else:
+                held_ones = len(visible) if visible else 0
+                distribution = hidden_distribution(held_ones, entry["rolls_used"])
+            opponents.append((seat, lids[seat], distribution))
+
+        for seat in range(position + 1, n_active):
+            opponents.append((seat, lids[seat], None))
+
+        return ExpectedLidsObjective(
+            opponents=opponents,
+            position=position,
+            n_positions=n_active,
+            pot=context["pot"],
+            own_lids=lids[position],
+            total_lids=context["pot"] + sum(lids),
+            follower_distributions=self.follower_distributions,
+            is_opener=position == 0,
+            max_rolls=max_rolls,
         )

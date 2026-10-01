@@ -99,7 +99,7 @@ def rank_distribution(
         decision = decide_after_roll(state, roll, strategy)
 
         if decision["action"] == "stop":
-            distribution[decision["rank"]] += probability
+            distribution[decision["rank"]] += probability  # type: ignore
         else:
             sub = rank_distribution(decision["state"], strategy, cache)
             for rank, p in sub.items():
@@ -147,7 +147,7 @@ def joint_distribution(
 
         if decision["action"] == "stop":
             outcome = (decision["rank"], decision["state"]["rolls_used"])
-            distribution[outcome] += probability
+            distribution[outcome] += probability  # type: ignore
         else:
             sub = joint_distribution(decision["state"], strategy, cache)
             for outcome, p in sub.items():

@@ -43,7 +43,7 @@ zweiten Halbzeit spielen die beiden Halbzeitverlierer das Finale aus.
 
 ```
 src/schocken/
-├── typedefs.py       # TypedDicts: GameState, Decision, TurnResult, PublicPlayerState, RoundContext
+├── types.py          # TypedDicts: GameState, Decision, TurnResult, PublicPlayerState, RoundContext
 ├── utils.py          # normalize()
 ├── dice.py           # roll_dice()
 ├── classification.py # is_shock, is_general, is_straight, is_shock_out, classify, lid_value
@@ -163,4 +163,5 @@ und beantwortete nur die Frage nach der besten ersten Abweichung.
 - Docstrings auf Deutsch, Code und Bezeichner auf Englisch
 - Google-Style Docstrings mit Args/Returns/Raises
 - Mypy läuft über das Projekt, Ruff als Linter
+- Zeilenenden CRLF in allen Dateien (Windows, vermeidet Git-Warnungen)
 - Gespräche auf Deutsch, Duzen
