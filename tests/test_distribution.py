@@ -1,9 +1,11 @@
 """Prüfskript für joint_distribution und survival_probability_with_ties."""
 
-from schocken.probability.distribution import (
-    cumulative_table,
+from schocken.probability.enumeration import (
     joint_distribution,
     opponent_distribution,
+)
+from schocken.probability.survival import (
+    cumulative_table,
     survival_probability,
     survival_probability_with_ties,
 )

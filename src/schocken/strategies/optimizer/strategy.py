@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from schocken.core.classification import classify
 from schocken.core.state import next_states
 from schocken.core.typedefs import GameState
-from schocken.probability.distribution import roll_distribution
+from schocken.probability.enumeration import roll_distribution
 from schocken.utils import normalize
 
 if TYPE_CHECKING:

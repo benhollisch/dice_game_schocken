@@ -6,7 +6,7 @@ Konfiguration der Spieler und Strategien sowie Start der Simulation.
 
 from schocken.engine.game import Player
 from schocken.engine.simulation import simulate_games
-from schocken.probability.distribution import joint_distribution
+from schocken.probability.enumeration import joint_distribution
 from schocken.strategies.absolute import StaticThresholdStrategy, GreedyAllIn
 from schocken.strategies.optimizer.optimal import OptimalStrategy
 from schocken.core.typedefs import GameState

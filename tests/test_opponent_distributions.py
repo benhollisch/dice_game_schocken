@@ -22,12 +22,12 @@ import pytest
 from scipy import stats
 
 from schocken.core.classification import classify
-from schocken.probability.distribution import (
+from schocken.probability.enumeration import (
     hidden_distribution,
     joint_distribution,
     rank_distribution,
-    survival_probability_with_ties,
 )
+from schocken.probability.survival import survival_probability_with_ties
 from schocken.engine.game import play_turn
 from schocken.core.state import decide_after_roll
 from schocken.strategies.absolute import (

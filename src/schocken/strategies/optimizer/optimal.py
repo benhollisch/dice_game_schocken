@@ -27,11 +27,11 @@ from typing import Literal
 import numpy as np
 
 from schocken.core.classification import classify
-from schocken.probability.distribution import (
+from schocken.probability.enumeration import (
     hidden_distribution,
     roll_distribution,
-    survival_probability_with_ties,
 )
+from schocken.probability.survival import survival_probability_with_ties
 from schocken.strategies.base import BaseStrategy
 from schocken.strategies.optimizer.strategy import value_before_roll
 from schocken.core.typedefs import (
@@ -463,7 +463,7 @@ class OptimalStrategy(BaseStrategy):
         objective: "not_lose" (Option A) oder "expected_lids" (Option B).
         max_rolls: Wurfbudget, falls der Kontext noch keines festlegt.
         fallback_players: Spielerzahl, falls kein Kontext übergeben wird
-            (z.B. bei der Enumeration in distribution.py). Im Spiel ohne Wirkung.
+            (z.B. bei der Enumeration in enumeration.py). Im Spiel ohne Wirkung.
     """
 
     def __init__(
@@ -509,7 +509,7 @@ class OptimalStrategy(BaseStrategy):
         """
         Baut die Zielfunktion aus dem aktuellen Rundenkontext.
 
-        Ohne Kontext (Enumeration in distribution.py) fehlen Pot und
+        Ohne Kontext (Enumeration in enumeration.py) fehlen Pot und
         Deckelstände; dann wird auch für Option B die Zielfunktion von
         Option A verwendet.
 

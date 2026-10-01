@@ -43,23 +43,33 @@ zweiten Halbzeit spielen die beiden Halbzeitverlierer das Finale aus.
 
 ```
 src/schocken/
-├── types.py          # TypedDicts: GameState, Decision, TurnResult, PublicPlayerState, RoundContext
-├── utils.py          # normalize()
-├── dice.py           # roll_dice()
-├── classification.py # is_shock, is_general, is_straight, is_shock_out, classify, lid_value
-├── state.py          # next_states(), decide_after_roll()
-├── distribution.py   # Rangverteilungen, Gegnertabellen, Überlebenswahrscheinlichkeiten
-├── game.py           # Player, Game, play_turn(), compare_results()
-├── simulation.py     # simulate_games(), print_round_summary()
-├── analysis.py       # Konfidenzintervalle, HHI, Rosenbluth, Gini, Chi-Quadrat, print_summary()
+├── utils.py              # normalize()
+├── core/
+│   ├── typedefs.py       # TypedDicts: GameState, Decision, TurnResult, PublicPlayerState, RoundContext
+│   ├── dice.py           # roll_dice()
+│   ├── classification.py # is_shock, is_general, is_straight, is_shock_out, classify, lid_value
+│   └── state.py          # next_states(), decide_after_roll()
+├── probability/
+│   ├── enumeration.py    # roll_, rank_, joint_, opponent_, hidden_distribution()
+│   ├── analytic.py       # increment_, ones_distribution() (Kontrollrechnung)
+│   └── survival.py       # cumulative_table(), survival_probability(_with_ties)(), opponent_tables()
+├── engine/
+│   ├── game.py           # Player, Game, play_turn(), compare_results()
+│   └── simulation.py     # simulate_games(), print_round_summary()
+├── analysis/
+│   └── statistics.py     # Konfidenzintervalle, HHI, Rosenbluth, Gini, Chi-Quadrat, print_summary()
 └── strategies/
-    ├── base.py       # BaseStrategy (ABC), danger_score, total_danger, worst_public_rank
-    ├── absolute.py   # GreedyAllIn, StaticThresholdStrategy
-    ├── relative.py   # PublicThreshold, AdaptiveGreedy, HybridThreshold, DangerAware
-    └── optimal.py    # Objective, Bellman-Wertfunktion, OptimalStrategy
-testing/
-└── test_distribution.py
-main.py
+    ├── base.py           # BaseStrategy (ABC), danger_score, total_danger, worst_public_rank
+    ├── absolute.py       # GreedyAllIn, StaticThresholdStrategy
+    ├── relative.py       # PublicThreshold, AdaptiveGreedy, HybridThreshold, DangerAware
+    └── optimizer/
+        ├── optimal.py    # Objective, ExpectedLidsObjective, OptimalStrategy
+        ├── strategy.py   # value_before_roll(), value_after_roll() (Bellman-Wertfunktion)
+        ├── bellman.py    # (leer)
+        └── objectives.py # (leer)
+tests/                    # pytest-Tests und Prüfskripte (check*.py)
+scripts/
+└── main.py               # Einstiegspunkt der Simulation
 ```
 
 ## Designentscheidungen
@@ -155,7 +165,7 @@ und beantwortete nur die Frage nach der besten ersten Abweichung.
 - [ ] Präfix-Heuristiken als Strategiefamilie (reale Spieler schauen auf die höchste
       Augenzahl, nicht auf den vollen Rang)
 - [ ] `parse_threshold()` in `base.py` — Threshold wahlweise als Würfelbild oder Rang
-- [ ] TODO in `distribution.py`: `decide_after_roll` wird ohne `public_table_state`
+- [ ] TODO in `enumeration.py`: `decide_after_roll` wird ohne `public_table_state`
       aufgerufen; für reaktive Strategien ist die Enumeration daher nicht korrekt
 
 ## Konventionen

@@ -1,18 +1,12 @@
 """
-Berechnung von Rangverteilungen für Schocken-Zustände.
+Rangverteilungen durch Enumeration.
 
 Enthält die Enumeration des Entscheidungsbaums eines Zuges unter einer
-gegebenen Politik sowie Hilfsfunktionen zur Weiterverarbeitung der
-resultierenden Verteilungen.
+gegebenen Politik sowie die exakte Verteilung verdeckter Vorgänger.
 """
 
-# TODO: roll_, rank_, joint_, hidden_ in enumeration.py auslagern, distribution.py nur noch für analytische Berechnungen verwenden
-# TODO: increment_/ones_distribution in analytic.py auslagern, da sie nicht direkt mit der Enumeration zusammenhängen
-# TODO: nach survival.py auslagern, da die Funktionen nicht direkt mit der Enumeration zusammenhängen
 from collections import defaultdict
 from itertools import product
-from math import comb, factorial
-from bisect import bisect_right
 
 from schocken.core.state import decide_after_roll
 from schocken.strategies.base import BaseStrategy
@@ -160,84 +154,6 @@ def joint_distribution(
     return result
 
 
-def increment_distribution(n_dice: int) -> dict[int, float]:
-    """
-    Berechnet die Verteilung des Einsen-Zuwachses in einem einzelnen Wurf.
-
-    Berücksichtigt die Konversion von Sechsen: zwei Sechsen ergeben eine
-    zusätzliche Eins, drei Sechsen ergeben zwei. Basiert auf der gemeinsamen
-    Multinomialverteilung von Einsen und Sechsen.
-
-    Args:
-        n_dice: Anzahl der geworfenen Würfel.
-
-    Returns:
-        Dictionary von Zuwachs auf Wahrscheinlichkeit.
-    """
-    conversion = {0: 0, 1: 0, 2: 1, 3: 2}
-    distribution: dict[int, float] = defaultdict(float)
-
-    for ones in range(n_dice + 1):
-        for sixes in range(n_dice - ones + 1):
-            rest = n_dice - ones - sixes
-            weight = (
-                factorial(n_dice)
-                / (factorial(ones) * factorial(sixes) * factorial(rest))
-                * (1 / 6) ** ones
-                * (1 / 6) ** sixes
-                * (4 / 6) ** rest
-            )
-            distribution[ones + conversion.get(sixes, 0)] += weight
-
-    return dict(distribution)
-
-
-def ones_distribution(
-    n_dice: int, n_rolls: int, with_conversion: bool = True
-) -> dict[int, float]:
-    """
-    Berechnet die Verteilung der Einsenanzahl nach n_rolls Würfen.
-
-    Analytische Kontrollrechnung zur Validierung der Enumeration. Unterstellt,
-    dass in jedem Wurf alle Einsen herausgelegt und die verbleibenden Würfel
-    erneut geworfen werden.
-
-    Args:
-        n_dice: Anzahl der Würfel zu Beginn.
-        n_rolls: Anzahl der Würfe.
-        with_conversion: Ob die Sechsen-Konversion berücksichtigt wird.
-
-    Returns:
-        Dictionary von Einsenanzahl auf Wahrscheinlichkeit.
-    """
-    distribution: dict[int, float] = {0: 1.0}
-
-    for _ in range(n_rolls):
-        updated: dict[int, float] = defaultdict(float)
-
-        for held, p_held in distribution.items():
-            remaining = n_dice - held
-
-            if remaining == 0:
-                updated[held] += p_held
-                continue
-
-            if with_conversion:
-                increments = increment_distribution(remaining)
-            else:
-                increments = {
-                    k: comb(remaining, k) * (1 / 6) ** k * (5 / 6) ** (remaining - k)
-                    for k in range(remaining + 1)
-                }
-
-            for increment, p_increment in increments.items():
-                updated[min(held + increment, n_dice)] += p_held * p_increment
-
-        distribution = dict(updated)
-
-    return distribution
-
-
 def opponent_distribution(
     n_rolls: int,
     strategy: BaseStrategy,
@@ -299,111 +215,3 @@ def hidden_distribution(
         distribution[(classify(final), rolls_used)] += probability
 
     return dict(distribution)
-
-
-def cumulative_table(
-    distribution: dict[tuple[int, ...], float],
-) -> tuple[list[tuple[int, ...]], list[float]]:
-    """
-    Wandelt eine Rangverteilung in eine kumulierte Tabelle für Tailsummen um.
-
-    Die Ränge werden aufsteigend sortiert (bessere Ränge zuerst). Die
-    Präfixsummen enthalten an Position i die aufsummierte Wahrscheinlichkeit
-    aller Ränge vor Position i.
-
-    Args:
-        distribution: Dictionary von Rang auf Wahrscheinlichkeit.
-
-    Returns:
-        Tuple aus sortierter Rangliste und zugehörigen Präfixsummen.
-    """
-    ranks = sorted(distribution)
-
-    prefix = [0.0]
-    for rank in ranks:
-        prefix.append(prefix[-1] + distribution[rank])
-
-    return ranks, prefix
-
-
-def survival_probability(
-    table: tuple[list[tuple[int, ...]], list[float]],
-    rank: tuple[int, ...],
-) -> float:
-    """
-    Berechnet die Wahrscheinlichkeit, dass ein Gegner schlechter abschneidet.
-
-    Entspricht P(Rang_Gegner > rank), also der Tailsumme oberhalb des
-    übergebenen Rangs. Gleichstand zählt nicht als Erfolg, da der Tie-Break
-    über die Wurfzahl separat zu behandeln ist.
-
-    Args:
-        table: Kumulierte Tabelle aus cumulative_table().
-        rank: Eigener Rang, gegen den verglichen wird.
-
-    Returns:
-        Wahrscheinlichkeit zwischen 0 und 1.
-    """
-    ranks, prefix = table
-    index = bisect_right(ranks, rank)
-    return prefix[-1] - prefix[index]
-
-
-def survival_probability_with_ties(
-    distribution: dict[tuple[tuple[int, ...], int], float],
-    rank: tuple[int, ...],
-    rolls_used: int,
-    acts_first: bool,
-) -> float:
-    """
-    Berechnet die Wahrscheinlichkeit, gegen einen Gegner nicht zu verlieren.
-
-    Berücksichtigt beide Tie-Break-Stufen: Bei gleichem Rang gewinnt die
-    geringere Wurfzahl, bei gleicher Wurfzahl die frühere Position.
-
-    Args:
-        distribution: Gemeinsame Verteilung aus joint_distribution().
-        rank: Eigener Rang.
-        rolls_used: Eigene verbrauchte Wurfzahl.
-        acts_first: Ob man vor dem betrachteten Gegner an der Reihe war.
-
-    Returns:
-        Wahrscheinlichkeit zwischen 0 und 1.
-    """
-    total = 0.0
-
-    for (opponent_rank, opponent_rolls), p in distribution.items():
-        if opponent_rank > rank:
-            total += p
-        elif opponent_rank == rank:
-            if opponent_rolls > rolls_used:
-                total += p
-            elif opponent_rolls == rolls_used and acts_first:
-                total += p
-
-    return total
-
-
-def opponent_tables(
-    strategy: BaseStrategy,
-    max_rolls: int = 3,
-    n_dice: int = 3,
-) -> dict[int, tuple[list[tuple[int, ...]], list[float]]]:
-    """
-    Tabelliert die kumulierten Rangverteilungen für alle Wurfzahlen.
-
-    Wird einmal vorberechnet und anschließend für Lookups verwendet, da die
-    Verteilungen weder vom Tischzustand noch vom eigenen Würfelbild abhängen.
-
-    Args:
-        strategy: Referenzstrategie der Gegner.
-        max_rolls: Höchste zu tabellierende Wurfzahl.
-        n_dice: Anzahl der Würfel zu Beginn.
-
-    Returns:
-        Dictionary von Wurfzahl auf kumulierte Tabelle.
-    """
-    return {
-        m: cumulative_table(opponent_distribution(m, strategy, n_dice))
-        for m in range(1, max_rolls + 1)
-    }

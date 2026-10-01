@@ -15,7 +15,7 @@ from itertools import product
 import pytest
 
 from schocken.core.classification import classify
-from schocken.probability.distribution import (
+from schocken.probability.enumeration import (
     hidden_distribution,
     joint_distribution,
     roll_distribution,

@@ -1,8 +1,8 @@
-from schocken.probability.distribution import (
+from schocken.probability.enumeration import (
     roll_distribution,
     rank_distribution,
-    ones_distribution,
 )
+from schocken.probability.analytic import ones_distribution
 from schocken.core.classification import classify
 import schocken.core.state as state_module
 from schocken.strategies.absolute import GreedyAllIn
