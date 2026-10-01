@@ -11,27 +11,24 @@ Ausführen mit:  pytest testing/test_expected_lids.py -v
 
 import sys
 from itertools import product
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from schocken.classification import classify  # noqa: E402
-from schocken.distribution import (  # noqa: E402
+from schocken.classification import classify
+from schocken.distribution import (
     hidden_distribution,
     joint_distribution,
     roll_distribution,
 )
-from schocken.game import Game, Player, compare_results  # noqa: E402
-from schocken.state import decide_after_roll  # noqa: E402
-from schocken.strategies.absolute import GreedyAllIn  # noqa: E402
-from schocken.strategies.optimal import (  # noqa: E402
+from schocken.game import Game, Player, compare_results
+from schocken.state import decide_after_roll
+from schocken.strategies.absolute import GreedyAllIn
+from schocken.strategies.optimal import (
     ExpectedLidsObjective,
     Objective,
     OptimalStrategy,
 )
-from schocken.typedefs import GameState, PublicPlayerState, RoundContext  # noqa: E402
+from schocken.typedefs import GameState, PublicPlayerState, RoundContext
 
 TOLERANCE = 1e-10
 DICE_OF_RANK = {classify(roll): roll for roll in roll_distribution(3)}

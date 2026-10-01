@@ -1,11 +1,6 @@
 """Prüfskript für die Gegnerverteilungen in distribution.py."""
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from schocken.strategies.absolute import GreedyAllIn, StaticThresholdStrategy
-from schocken.strategies.relative import PublicThresholdStrategy
+from schocken.strategies.absolute import StaticThresholdStrategy
 from schocken.distribution import (
     opponent_distribution,
     opponent_tables,

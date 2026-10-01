@@ -17,32 +17,29 @@ import random
 import sys
 from collections import Counter
 from fractions import Fraction as F
-from pathlib import Path
 
 import pytest
 from scipy import stats
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from schocken.classification import classify  # noqa: E402
-from schocken.distribution import (  # noqa: E402
+from schocken.classification import classify
+from schocken.distribution import (
     hidden_distribution,
     joint_distribution,
     rank_distribution,
     survival_probability_with_ties,
 )
-from schocken.game import play_turn  # noqa: E402
-from schocken.state import decide_after_roll  # noqa: E402
-from schocken.strategies.absolute import (  # noqa: E402
+from schocken.game import play_turn
+from schocken.state import decide_after_roll
+from schocken.strategies.absolute import (
     GreedyAllIn,
     StaticThresholdStrategy,
 )
-from schocken.strategies.optimal import (  # noqa: E402
+from schocken.strategies.optimal import (
     Objective,
     OptimalStrategy,
     split_predecessors,
 )
-from schocken.typedefs import GameState, PublicPlayerState, RoundContext  # noqa: E402
+from schocken.typedefs import GameState, PublicPlayerState, RoundContext
 
 TOLERANCE = 1e-12
 P_VALUE_THRESHOLD = 1e-3

@@ -10,13 +10,10 @@ Ausführen mit:  pytest src/testing/test_conversion_rules.py -v
 """
 
 import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from schocken.state import decide_after_roll, next_states  # noqa: E402
-from schocken.strategies.base import BaseStrategy  # noqa: E402
-from schocken.typedefs import Decision, GameState, RoundContext  # noqa: E402
+from schocken.state import decide_after_roll, next_states
+from schocken.strategies.base import BaseStrategy
+from schocken.typedefs import Decision, GameState, RoundContext
 
 
 class RecordingStrategy(BaseStrategy):

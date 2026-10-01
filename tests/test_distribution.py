@@ -1,11 +1,6 @@
 """Prüfskript für joint_distribution und survival_probability_with_ties."""
 
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from schocken.distribution import (  # noqa: E402
+from schocken.distribution import (
     cumulative_table,
     joint_distribution,
     opponent_distribution,
@@ -13,10 +8,9 @@ from schocken.distribution import (  # noqa: E402
     survival_probability_with_ties,
 )
 from schocken.strategies.absolute import (
-    GreedyAllIn,
     StaticThresholdStrategy,
-)  # noqa: E402
-from schocken.typedefs import GameState  # noqa: E402
+)
+from schocken.typedefs import GameState
 from schocken.classification import classify
 
 STRATEGY = StaticThresholdStrategy(threshold=classify((6, 5, 5)))
