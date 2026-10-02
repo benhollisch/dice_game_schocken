@@ -14,32 +14,24 @@ from itertools import product
 
 import pytest
 
+from helpers import predecessor
 from schocken.core.classification import classify
 from schocken.probability.enumeration import (
     hidden_distribution,
-    joint_distribution,
     roll_distribution,
 )
 from schocken.engine.game import Game, Player, compare_results
-from schocken.core.state import decide_after_roll, initial_state
+from schocken.core.state import decide_after_roll
 from schocken.strategies.absolute import GreedyAllIn
 from schocken.strategies.optimizer.objectives import (
     ExpectedLidsObjective,
     Objective,
 )
 from schocken.strategies.optimizer.strategy import OptimalStrategy
-from schocken.core.typedefs import GameState, PublicPlayerState, RoundContext
+from schocken.core.typedefs import GameState, RoundContext
 
 TOLERANCE = 1e-10
 DICE_OF_RANK = {classify(roll): roll for roll in roll_distribution(3)}
-
-
-@pytest.fixture(scope="module")
-def follower_tables() -> dict[int, dict]:
-    return {
-        m: joint_distribution(initial_state(n_rolls=m), GreedyAllIn())
-        for m in (1, 2, 3)
-    }
 
 
 # --------------------------------------------------------------------------
@@ -274,12 +266,6 @@ def test_degenerates_to_option_a(follower_tables):
 # --------------------------------------------------------------------------
 # Verhalten der Strategie
 # --------------------------------------------------------------------------
-
-
-def predecessor(seat: int, visible, rolls: int) -> PublicPlayerState:
-    return PublicPlayerState(
-        player=f"P{seat}", turn_order=seat, visible_state=visible, rolls_used=rolls
-    )
 
 
 def five_player_context(pot: int, lids: list[int]) -> RoundContext:

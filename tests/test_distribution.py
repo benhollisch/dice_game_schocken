@@ -1,23 +1,24 @@
-"""Prüfskript für joint_distribution und survival_probability_with_ties."""
+"""
+Tests für joint_distribution und survival_probability_with_ties.
 
-from schocken.probability.enumeration import (
-    joint_distribution,
-    opponent_distribution,
-)
+Geprüft werden die Konsistenz der gemeinsamen Verteilung mit der reinen
+Rangverteilung sowie Invarianten der Überlebensfunktion mit Tie-Break.
+Alle Verteilungen stammen aus der Schwellenstrategie in conftest.py.
+
+Ausführen mit:  pytest tests/test_distribution.py -v
+"""
+
+import sys
+
+import pytest
+
+from helpers import assert_distribution_equal, ranks_only
 from schocken.probability.survival import (
-    cumulative_table,
     survival_probability,
     survival_probability_with_ties,
 )
-from schocken.strategies.absolute import (
-    StaticThresholdStrategy,
-)
-from schocken.core.typedefs import GameState
-from schocken.core.classification import classify
-from schocken.core.state import initial_state
 
-STRATEGY = StaticThresholdStrategy(threshold=classify((6, 5, 5)))
-# STRATEGY = GreedyAllIn()
+TOLERANCE = 1e-12
 
 PROBES = [
     ((0, 0), "Schock-Out (1,1,1)"),
@@ -31,119 +32,115 @@ PROBES = [
 ]
 
 
-def check_consistency() -> None:
-    """Prüft, ob die Randverteilung mit rank_distribution übereinstimmt."""
-    print("Konsistenz mit rank_distribution")
-    print("-" * 68)
-
-    for m in (1, 2, 3):
-        joint = joint_distribution(initial_state(n_rolls=m), STRATEGY)
-
-        marginal: dict[tuple[int, ...], float] = {}
-        for (rank, _), p in joint.items():
-            marginal[rank] = marginal.get(rank, 0.0) + p
-
-        reference = opponent_distribution(m, STRATEGY)
-        matches = all(
-            abs(marginal.get(r, 0.0) - p) < 1e-12 for r, p in reference.items()
-        )
-        print(
-            f"m={m}  Einträge: {len(joint):3d}  Summe: {sum(joint.values()):.10f}  "
-            f"Randverteilung stimmt: {matches}"
-        )
+# --------------------------------------------------------------------------
+# A. Konsistenz der gemeinsamen Verteilung
+# --------------------------------------------------------------------------
 
 
-def show_roll_counts(m: int = 3) -> None:
-    """Gibt aus, wie sich die Wahrscheinlichkeit auf Wurfzahlen verteilt."""
-    print(f"\nVerteilung der Wurfzahlen (m={m})")
-    print("-" * 68)
-
-    joint = joint_distribution(initial_state(n_rolls=m), STRATEGY)
-    by_rolls: dict[int, float] = {}
-    for (_, rolls), p in joint.items():
-        by_rolls[rolls] = by_rolls.get(rolls, 0.0) + p
-
-    for rolls in sorted(by_rolls):
-        print(f"  {rolls} Würfe: {by_rolls[rolls]:.6f}")
+@pytest.mark.parametrize("budget", [1, 2, 3])
+def test_joint_sums_to_one(threshold_joint_tables, budget):
+    """Die gemeinsame Verteilung ist normiert."""
+    assert abs(sum(threshold_joint_tables[budget].values()) - 1.0) < TOLERANCE
 
 
-def compare_survival(m: int = 3) -> None:
-    """Stellt beide Überlebensfunktionen für ausgewählte Ränge gegenüber."""
-    print(f"\nVergleich der Überlebensfunktionen (m={m})")
-    print("-" * 68)
+@pytest.mark.parametrize("budget", [1, 2, 3])
+def test_joint_rolls_within_budget(threshold_joint_tables, budget):
+    """Keine Wurfzahl liegt außerhalb von 1 bis zum Budget."""
+    assert {r for _, r in threshold_joint_tables[budget]} <= set(range(1, budget + 1))
 
-    joint = joint_distribution(initial_state(n_rolls=m), STRATEGY)
-    table = cumulative_table(opponent_distribution(m, STRATEGY))
 
-    header = (
-        f"{'Rang':<22}{'ohne Ties':>11}{'r=1 first':>11}"
-        f"{'r=3 first':>11}{'r=3 last':>11}"
+@pytest.mark.parametrize("budget", [1, 2, 3])
+def test_joint_marginal_matches_opponent_distribution(
+    threshold_joint_tables, threshold_rank_tables, budget
+):
+    """Die Randverteilung über die Wurfzahl entspricht opponent_distribution."""
+    assert_distribution_equal(
+        ranks_only(threshold_joint_tables[budget]),
+        threshold_rank_tables[budget],
+        TOLERANCE,
     )
-    print(header)
-
-    for rank, label in PROBES:
-        without = survival_probability(table, rank)
-        r1_first = survival_probability_with_ties(joint, rank, 1, True)
-        r3_first = survival_probability_with_ties(joint, rank, 3, True)
-        r3_last = survival_probability_with_ties(joint, rank, 3, False)
-        print(
-            f"{label:<22}{without:>11.4f}{r1_first:>11.4f}"
-            f"{r3_first:>11.4f}{r3_last:>11.4f}"
-        )
 
 
-def check_invariants(m: int = 3) -> None:
+# --------------------------------------------------------------------------
+# B. Überlebensfunktion: Sonderfälle
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "rank", [rank for rank, _ in PROBES], ids=[label for _, label in PROBES]
+)
+def test_ties_vanish_at_full_budget_acting_last(
+    threshold_joint_tables, threshold_cumulative_tables, rank
+):
     """
-    Prüft zwei Invarianten der neuen Überlebensfunktion.
+    Volles Budget und spätere Position: Jeder Gleichstand geht verloren.
 
-    Die Berücksichtigung von Gleichständen darf den Wert nie senken, und eine
-    frühere Position darf nie schaden.
+    Kein Gegner kann mehr Würfe verbrauchen als das Budget, und bei gleicher
+    Wurfzahl entscheidet die Position gegen den eigenen Spieler. Die Funktion
+    mit Ties muss dann mit der ohne Ties übereinstimmen.
     """
-    print("\nInvarianten")
-    print("-" * 68)
-
-    joint = joint_distribution(initial_state(n_rolls=m), STRATEGY)
-    table = cumulative_table(opponent_distribution(m, STRATEGY))
-
-    violations = 0
-    for rank in {r for r, _ in joint}:
-        without = survival_probability(table, rank)
-        for rolls in (1, 2, 3):
-            first = survival_probability_with_ties(joint, rank, rolls, True)
-            last = survival_probability_with_ties(joint, rank, rolls, False)
-
-            if last < without - 1e-12:
-                violations += 1
-                print(f"  ties < ohne Ties bei {rank}, r={rolls}: {last} < {without}")
-            if first < last - 1e-12:
-                violations += 1
-                print(f"  first < last bei {rank}, r={rolls}: {first} < {last}")
-
-    print(f"Verletzungen: {violations}")
-
-
-def show_tie_break_effect(m: int = 3, own_rolls: int = 1) -> None:
-    """Zeigt die Ränge, an denen der Tie-Break am stärksten wirkt."""
-    print(
-        f"\nGrößter Tie-Break-Effekt (m={m}, eigene Wurfzahl {own_rolls}, früher dran)"
+    budget = 3
+    without = survival_probability(threshold_cumulative_tables[budget], rank)
+    with_ties = survival_probability_with_ties(
+        threshold_joint_tables[budget], rank, budget, False
     )
-    print("-" * 68)
+    assert abs(with_ties - without) < TOLERANCE
 
-    joint = joint_distribution(initial_state(n_rolls=m), STRATEGY)
-    table = cumulative_table(opponent_distribution(m, STRATEGY))
 
-    deltas = []
+@pytest.mark.parametrize(
+    "rank", [rank for rank, _ in PROBES], ids=[label for _, label in PROBES]
+)
+@pytest.mark.parametrize("rolls", [1, 2, 3])
+@pytest.mark.parametrize("acts_first", [True, False])
+def test_survival_is_probability(threshold_joint_tables, rank, rolls, acts_first):
+    """Alle Werte liegen im Einheitsintervall."""
+    value = survival_probability_with_ties(
+        threshold_joint_tables[3], rank, rolls, acts_first
+    )
+    assert -TOLERANCE <= value <= 1.0 + TOLERANCE
+
+
+# --------------------------------------------------------------------------
+# C. Überlebensfunktion: Invarianten über alle erreichbaren Ränge
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("budget", [1, 2, 3])
+@pytest.mark.parametrize("rolls", [1, 2, 3])
+def test_ties_never_lower_survival(
+    threshold_joint_tables, threshold_cumulative_tables, budget, rolls
+):
+    """Die Berücksichtigung von Gleichständen senkt den Wert nie."""
+    joint = threshold_joint_tables[budget]
     for rank in {r for r, _ in joint}:
-        without = survival_probability(table, rank)
-        with_ties = survival_probability_with_ties(joint, rank, own_rolls, True)
-        deltas.append((with_ties - without, rank))
-
-    for delta, rank in sorted(deltas, reverse=True)[:8]:
-        print(f"  {str(rank):<22} +{delta:.6f}")
+        without = survival_probability(threshold_cumulative_tables[budget], rank)
+        last = survival_probability_with_ties(joint, rank, rolls, False)
+        assert last >= without - TOLERANCE, rank
 
 
-# check_consistency()
-# show_roll_counts()
-# compare_survival()
-# check_invariants()
-# show_tie_break_effect()
+@pytest.mark.parametrize("budget", [1, 2, 3])
+@pytest.mark.parametrize("rolls", [1, 2, 3])
+def test_acting_first_never_hurts(threshold_joint_tables, budget, rolls):
+    """Eine frühere Position schadet nie."""
+    joint = threshold_joint_tables[budget]
+    for rank in {r for r, _ in joint}:
+        first = survival_probability_with_ties(joint, rank, rolls, True)
+        last = survival_probability_with_ties(joint, rank, rolls, False)
+        assert first >= last - TOLERANCE, rank
+
+
+@pytest.mark.parametrize("budget", [1, 2, 3])
+@pytest.mark.parametrize("acts_first", [True, False])
+def test_fewer_rolls_never_hurt(threshold_joint_tables, budget, acts_first):
+    """Weniger eigene Würfe schaden bei gleichem Rang nie."""
+    joint = threshold_joint_tables[budget]
+    for rank in {r for r, _ in joint}:
+        values = [
+            survival_probability_with_ties(joint, rank, rolls, acts_first)
+            for rolls in (1, 2, 3)
+        ]
+        assert all(a >= b - TOLERANCE for a, b in zip(values, values[1:])), rank
+
+
+if __name__ == "__main__":
+    sys.exit(pytest.main([__file__, "-v"]))

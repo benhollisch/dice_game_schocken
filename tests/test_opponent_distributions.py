@@ -19,12 +19,16 @@ from collections import Counter
 from fractions import Fraction as F
 
 import pytest
-from scipy import stats
 
+from helpers import (
+    assert_distribution_equal,
+    chi_square_p_value,
+    predecessor,
+    ranks_only,
+)
 from schocken.core.classification import classify
 from schocken.probability.enumeration import (
     hidden_distribution,
-    joint_distribution,
     rank_distribution,
 )
 from schocken.probability.survival import survival_probability_with_ties
@@ -39,67 +43,11 @@ from schocken.strategies.optimizer.objectives import (
     split_predecessors,
 )
 from schocken.strategies.optimizer.strategy import OptimalStrategy
-from schocken.core.typedefs import GameState, PublicPlayerState, RoundContext
+from schocken.core.typedefs import RoundContext
 
 TOLERANCE = 1e-12
 P_VALUE_THRESHOLD = 1e-3
 N_MONTE_CARLO = 30_000
-
-
-# --------------------------------------------------------------------------
-# Hilfsfunktionen
-# --------------------------------------------------------------------------
-
-
-def ranks_only(distribution: dict) -> dict[tuple[int, ...], float]:
-    """Summiert eine gemeinsame Verteilung über die Wurfzahl hinweg."""
-    marginal: dict[tuple[int, ...], float] = {}
-    for (rank, _), p in distribution.items():
-        marginal[rank] = marginal.get(rank, 0.0) + p
-    return marginal
-
-
-def assert_distribution_equal(actual: dict, expected: dict) -> None:
-    """Prüft zwei Verteilungen eintragsweise, in beide Richtungen."""
-    for key in set(actual) | set(expected):
-        assert abs(actual.get(key, 0.0) - float(expected.get(key, 0))) < TOLERANCE, key
-
-
-def chi_square_p_value(observed: Counter, expected: dict, n: int) -> float:
-    """
-    Chi-Quadrat-Anpassungstest einer Stichprobe gegen eine Verteilung.
-
-    Zellen mit erwarteter Häufigkeit unter 5 werden zu einer Restzelle
-    zusammengefasst, damit die Chi-Quadrat-Näherung gültig bleibt.
-    """
-    obs, exp = [], []
-    rest_obs, rest_exp = 0, 0.0
-
-    for key, p in expected.items():
-        if p * n >= 5:
-            obs.append(observed.get(key, 0))
-            exp.append(p * n)
-        else:
-            rest_obs += observed.get(key, 0)
-            rest_exp += p * n
-
-    unexpected = sum(v for k, v in observed.items() if k not in expected)
-    assert unexpected == 0, "Stichprobe enthält Ausgänge außerhalb der Verteilung"
-
-    if rest_exp > 0:
-        obs.append(rest_obs)
-        exp.append(rest_exp)
-
-    return stats.chisquare(obs, f_exp=exp).pvalue
-
-
-@pytest.fixture(scope="module")
-def follower_tables() -> dict[int, dict]:
-    """Nachfolgerverteilungen unter GreedyAllIn, je Wurfbudget."""
-    return {
-        m: joint_distribution(initial_state(n_rolls=m), GreedyAllIn())
-        for m in (1, 2, 3)
-    }
 
 
 # --------------------------------------------------------------------------
@@ -253,25 +201,20 @@ def test_follower_matches_simulation(follower_tables, budget):
 # --------------------------------------------------------------------------
 
 
-def entry(visible, rolls_used, turn_order=0) -> PublicPlayerState:
-    return PublicPlayerState(
-        player=f"P{turn_order}",
-        turn_order=turn_order,
-        visible_state=visible,
-        rolls_used=rolls_used,
-    )
-
-
 def test_split_opener_stopped_early_is_open():
     """Startspieler stoppt nach einem Wurf mit Straße: offen, nicht verdeckt."""
-    open_, hidden = split_predecessors([entry((6, 5, 4), 1)])
+    open_, hidden = split_predecessors([predecessor(0, (6, 5, 4), 1)])
     assert open_ == [((2, 0), 1)]
     assert hidden == []
 
 
 def test_split_partially_hidden_and_hidden():
     """Teilverdeckt mit ein oder zwei Einsen, vollständig verdeckt ohne Einsen."""
-    table = [entry((1, 1), 3, 0), entry((1,), 3, 1), entry(None, 3, 2)]
+    table = [
+        predecessor(0, (1, 1), 3),
+        predecessor(1, (1,), 3),
+        predecessor(2, None, 3),
+    ]
     open_, hidden = split_predecessors(table)
     assert open_ == []
     assert hidden == [(2, 3), (1, 3), (0, 3)]
@@ -279,7 +222,7 @@ def test_split_partially_hidden_and_hidden():
 
 def test_split_three_held_ones_is_open_shock_out():
     """Drei gehaltene Einsen sind ein vollständig sichtbares Bild."""
-    open_, hidden = split_predecessors([entry((1, 1, 1), 3)])
+    open_, hidden = split_predecessors([predecessor(0, (1, 1, 1), 3)])
     assert open_ == [((0, 0), 3)]
     assert hidden == []
 
@@ -362,7 +305,7 @@ def test_strategy_does_not_stop_against_partially_hidden(follower_tables):
     context = RoundContext(
         n_active=2,
         max_rolls=3,
-        public_table_state=[entry((1, 1), 3)],
+        public_table_state=[predecessor(0, (1, 1), 3)],
     )
     strategy = OptimalStrategy(follower_distributions=follower_tables)
     decision = decide_after_roll(initial_state(n_rolls=3), (5, 3, 2), strategy, context)
@@ -374,7 +317,7 @@ def test_strategy_stops_when_safe(follower_tables):
     context = RoundContext(
         n_active=3,
         max_rolls=3,
-        public_table_state=[entry((6, 5, 5), 3)],
+        public_table_state=[predecessor(0, (6, 5, 5), 3)],
     )
     strategy = OptimalStrategy(follower_distributions=follower_tables)
     decision = decide_after_roll(initial_state(n_rolls=3), (4, 3, 2), strategy, context)
