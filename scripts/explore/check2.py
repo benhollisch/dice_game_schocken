@@ -50,8 +50,8 @@ print("\nMonotonie-Check: P sollte mit m fallen")
 print("-" * 60)
 violations = 0
 for rank in sorted(dist):
-    values = [survival_probability(tables[m], rank) for m in (1, 2, 3)]
-    if not (values[0] >= values[1] >= values[2] - 1e-12):
+    survivals = [survival_probability(tables[m], rank) for m in (1, 2, 3)]
+    if not (survivals[0] >= survivals[1] >= survivals[2] - 1e-12):
         violations += 1
         print(f"  Verletzung bei {rank}: {values}")
 print(f"Verletzungen: {violations}")
