@@ -5,7 +5,7 @@ Enthält Funktionen zur Erkennung und Klassifikation von Würfelkombinationen
 sowie die Berechnung des Deckelwerts eines Würfelbildes.
 """
 
-from schocken.utils import normalize
+from schocken.core.dice import normalize
 
 
 def is_shock_out(dice: tuple[int, ...]) -> bool:

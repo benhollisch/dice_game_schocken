@@ -11,7 +11,7 @@ from itertools import product
 from schocken.core.state import decide_after_roll, initial_state
 from schocken.strategies.base import BaseStrategy
 from schocken.core.typedefs import GameState
-from schocken.utils import normalize
+from schocken.core.dice import normalize
 from schocken.core.classification import classify
 
 

@@ -5,7 +5,7 @@ Enthält Funktionen zur Berechnung möglicher Folgezustände nach einem Wurf
 sowie die Entscheidungslogik für den weiteren Spielverlauf.
 """
 
-from schocken.utils import normalize
+from schocken.core.dice import normalize
 from schocken.core.classification import classify
 from schocken.core.typedefs import (
     GameState,

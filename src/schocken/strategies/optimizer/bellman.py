@@ -12,7 +12,7 @@ from schocken.core.state import next_states
 from schocken.core.typedefs import GameState
 from schocken.probability.enumeration import roll_distribution
 from schocken.strategies.optimizer.objectives import ObjectiveFn
-from schocken.utils import normalize
+from schocken.core.dice import normalize
 
 
 def value_before_roll(

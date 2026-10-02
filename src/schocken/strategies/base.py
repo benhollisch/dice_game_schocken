@@ -13,7 +13,7 @@ from schocken.core.typedefs import (
     RoundContext,
 )
 from schocken.core.classification import classify
-from schocken.utils import normalize
+from schocken.core.dice import normalize
 
 
 class BaseStrategy(ABC):
