@@ -7,16 +7,19 @@ Rundenkontext aufgebaut.
 """
 
 from typing import Literal
+from functools import cache
 
 from schocken.core.classification import classify
+from schocken.core.state import initial_state
 from schocken.core.typedefs import (
     Decision,
     GameState,
     PublicPlayerState,
     RoundContext,
 )
-from schocken.probability.enumeration import hidden_distribution
+from schocken.probability.enumeration import hidden_distribution, joint_distribution
 from schocken.strategies.base import BaseStrategy
+from schocken.strategies.absolute import GreedyAllIn
 from schocken.strategies.optimizer.bellman import value_before_roll
 from schocken.strategies.optimizer.objectives import (
     ExpectedLidsObjective,
@@ -25,6 +28,17 @@ from schocken.strategies.optimizer.objectives import (
     ObjectiveFn,
     split_predecessors,
 )
+
+
+@cache
+def default_follower_distributions(
+    n_dice: int = 3, max_rolls: int = 3
+) -> dict[int, JointDistribution]:
+    """Nachfolgerverteilungen unter GreedyAllIn, je Wurfbudget. Nicht verändern."""
+    return {
+        m: joint_distribution(initial_state(m, n_dice), GreedyAllIn())
+        for m in range(1, max_rolls + 1)
+    }
 
 
 class OptimalStrategy(BaseStrategy):
@@ -43,11 +57,13 @@ class OptimalStrategy(BaseStrategy):
 
     def __init__(
         self,
-        follower_distributions: dict[int, JointDistribution],
         objective: Literal["not_lose", "expected_lids"] = "not_lose",
+        follower_distributions: dict[int, JointDistribution] | None = None,
         max_rolls: int = 3,
         fallback_players: int = 2,
     ):
+        if follower_distributions is None:
+            follower_distributions = default_follower_distributions(max_rolls=max_rolls)
         self.follower_distributions = follower_distributions
         self.objective = objective
         self.max_rolls = max_rolls
