@@ -1,5 +1,9 @@
 from random import randint
-from schocken.utils import normalize
+from collections.abc import Sequence
+
+
+def normalize(dice: Sequence[int]) -> tuple[int, ...]:
+    return tuple(sorted(dice, reverse=True))
 
 
 def roll_dice(dices_used: int = 3) -> tuple[int, ...]:
