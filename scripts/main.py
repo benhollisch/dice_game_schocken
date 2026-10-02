@@ -10,18 +10,13 @@ from schocken.probability.enumeration import joint_distribution
 from schocken.strategies.absolute import StaticThresholdStrategy, GreedyAllIn
 from schocken.strategies.optimizer.strategy import OptimalStrategy
 from schocken.core.typedefs import GameState
+from schocken.core.state import initial_state
 from schocken.analysis.statistics import print_summary
 
 reference = GreedyAllIn()
 tables = {
     m: joint_distribution(
-        GameState(
-            held_ones=0,
-            rolls_left=m,
-            rolls_used=0,
-            visible_state=None,
-            dice_to_roll=3,
-        ),
+        initial_state(n_rolls=m),
         reference,
     )
     for m in (1, 2, 3)

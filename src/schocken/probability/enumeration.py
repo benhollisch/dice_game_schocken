@@ -8,7 +8,7 @@ gegebenen Politik sowie die exakte Verteilung verdeckter Vorgänger.
 from collections import defaultdict
 from itertools import product
 
-from schocken.core.state import decide_after_roll
+from schocken.core.state import decide_after_roll, initial_state
 from schocken.strategies.base import BaseStrategy
 from schocken.core.typedefs import GameState
 from schocken.utils import normalize
@@ -173,13 +173,7 @@ def opponent_distribution(
     Returns:
         Dictionary von Rang auf Wahrscheinlichkeit.
     """
-    start = GameState(
-        held_ones=0,
-        rolls_left=n_rolls,
-        rolls_used=0,
-        visible_state=None,
-        dice_to_roll=n_dice,
-    )
+    start = initial_state(n_rolls=n_rolls, n_dice=n_dice)
     return rank_distribution(start, strategy)
 
 

@@ -14,6 +14,17 @@ from schocken.core.typedefs import (
 )
 
 
+def initial_state(n_rolls: int, n_dice: int = 3) -> GameState:
+    """Zustand eines Spielers vor seinem ersten Wurf."""
+    return GameState(
+        held_ones=0,
+        rolls_left=n_rolls,
+        rolls_used=0,
+        visible_state=None,
+        dice_to_roll=n_dice,
+    )
+
+
 def next_states(state: GameState, roll: tuple[int, ...]) -> list[GameState]:
     """
     Berechnet alle möglichen Folgezustände nach einem Wurf.

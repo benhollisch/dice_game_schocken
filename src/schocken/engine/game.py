@@ -6,7 +6,7 @@ Enthält die Klassen Player und Game sowie die Funktionen play_turn und compare_
 
 from schocken.core.dice import roll_dice
 from schocken.core.classification import lid_value, is_shock_out
-from schocken.core.state import decide_after_roll
+from schocken.core.state import decide_after_roll, initial_state
 from schocken.core.typedefs import (
     GameState,
     PublicPlayerState,
@@ -32,13 +32,7 @@ def play_turn(
     Returns:
         Ergebnis des Zuges als TurnResult.
     """
-    state = GameState(
-        held_ones=0,
-        rolls_left=max_rolls,
-        rolls_used=0,
-        visible_state=None,
-        dice_to_roll=3,
-    )
+    state = initial_state(n_rolls=max_rolls)
 
     history = []
 
