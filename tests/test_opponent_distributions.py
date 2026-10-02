@@ -29,7 +29,7 @@ from schocken.probability.enumeration import (
 )
 from schocken.probability.survival import survival_probability_with_ties
 from schocken.engine.game import play_turn
-from schocken.core.state import decide_after_roll
+from schocken.core.state import decide_after_roll, initial_state
 from schocken.strategies.absolute import (
     GreedyAllIn,
     StaticThresholdStrategy,
@@ -49,17 +49,6 @@ N_MONTE_CARLO = 30_000
 # --------------------------------------------------------------------------
 # Hilfsfunktionen
 # --------------------------------------------------------------------------
-
-
-def start_state(n_rolls: int, n_dice: int = 3) -> GameState:
-    """Ausgangszustand eines Spielers vor dem ersten Wurf."""
-    return GameState(
-        held_ones=0,
-        rolls_left=n_rolls,
-        rolls_used=0,
-        visible_state=None,
-        dice_to_roll=n_dice,
-    )
 
 
 def ranks_only(distribution: dict) -> dict[tuple[int, ...], float]:
@@ -107,7 +96,10 @@ def chi_square_p_value(observed: Counter, expected: dict, n: int) -> float:
 @pytest.fixture(scope="module")
 def follower_tables() -> dict[int, dict]:
     """Nachfolgerverteilungen unter GreedyAllIn, je Wurfbudget."""
-    return {m: joint_distribution(start_state(m), GreedyAllIn()) for m in (1, 2, 3)}
+    return {
+        m: joint_distribution(initial_state(n_rolls=m), GreedyAllIn())
+        for m in (1, 2, 3)
+    }
 
 
 # --------------------------------------------------------------------------
@@ -239,7 +231,7 @@ def test_follower_shock_out_reference_value(follower_tables):
 @pytest.mark.parametrize("budget", [1, 2, 3])
 def test_follower_marginal_matches_rank_distribution(follower_tables, budget):
     """Randverteilung der gemeinsamen Verteilung entspricht rank_distribution."""
-    reference = rank_distribution(start_state(budget), GreedyAllIn())
+    reference = rank_distribution(initial_state(n_rolls=budget), GreedyAllIn())
     assert_distribution_equal(ranks_only(follower_tables[budget]), reference)
 
 
@@ -373,7 +365,7 @@ def test_strategy_does_not_stop_against_partially_hidden(follower_tables):
         public_table_state=[entry((1, 1), 3)],
     )
     strategy = OptimalStrategy(follower_distributions=follower_tables)
-    decision = decide_after_roll(start_state(3), (5, 3, 2), strategy, context)
+    decision = decide_after_roll(initial_state(n_rolls=3), (5, 3, 2), strategy, context)
     assert decision["action"] == "continue"
 
 
@@ -385,7 +377,7 @@ def test_strategy_stops_when_safe(follower_tables):
         public_table_state=[entry((6, 5, 5), 3)],
     )
     strategy = OptimalStrategy(follower_distributions=follower_tables)
-    decision = decide_after_roll(start_state(3), (4, 3, 2), strategy, context)
+    decision = decide_after_roll(initial_state(n_rolls=3), (4, 3, 2), strategy, context)
     assert decision["action"] == "stop"
 
 

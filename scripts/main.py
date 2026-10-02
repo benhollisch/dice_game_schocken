@@ -9,7 +9,6 @@ from schocken.engine.simulation import simulate_games
 from schocken.probability.enumeration import joint_distribution
 from schocken.strategies.absolute import StaticThresholdStrategy, GreedyAllIn
 from schocken.strategies.optimizer.strategy import OptimalStrategy
-from schocken.core.typedefs import GameState
 from schocken.core.state import initial_state
 from schocken.analysis.statistics import print_summary
 

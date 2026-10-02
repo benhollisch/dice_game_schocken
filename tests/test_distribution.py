@@ -14,6 +14,7 @@ from schocken.strategies.absolute import (
 )
 from schocken.core.typedefs import GameState
 from schocken.core.classification import classify
+from schocken.core.state import initial_state
 
 STRATEGY = StaticThresholdStrategy(threshold=classify((6, 5, 5)))
 # STRATEGY = GreedyAllIn()
@@ -30,24 +31,13 @@ PROBES = [
 ]
 
 
-def start_state(n_rolls: int, n_dice: int = 3) -> GameState:
-    """Erzeugt den Ausgangszustand eines Spielers vor dem ersten Wurf."""
-    return GameState(
-        held_ones=0,
-        rolls_left=n_rolls,
-        rolls_used=0,
-        visible_state=None,
-        dice_to_roll=n_dice,
-    )
-
-
 def check_consistency() -> None:
     """Prüft, ob die Randverteilung mit rank_distribution übereinstimmt."""
     print("Konsistenz mit rank_distribution")
     print("-" * 68)
 
     for m in (1, 2, 3):
-        joint = joint_distribution(start_state(m), STRATEGY)
+        joint = joint_distribution(initial_state(n_rolls=m), STRATEGY)
 
         marginal: dict[tuple[int, ...], float] = {}
         for (rank, _), p in joint.items():
@@ -68,7 +58,7 @@ def show_roll_counts(m: int = 3) -> None:
     print(f"\nVerteilung der Wurfzahlen (m={m})")
     print("-" * 68)
 
-    joint = joint_distribution(start_state(m), STRATEGY)
+    joint = joint_distribution(initial_state(n_rolls=m), STRATEGY)
     by_rolls: dict[int, float] = {}
     for (_, rolls), p in joint.items():
         by_rolls[rolls] = by_rolls.get(rolls, 0.0) + p
@@ -82,7 +72,7 @@ def compare_survival(m: int = 3) -> None:
     print(f"\nVergleich der Überlebensfunktionen (m={m})")
     print("-" * 68)
 
-    joint = joint_distribution(start_state(m), STRATEGY)
+    joint = joint_distribution(initial_state(n_rolls=m), STRATEGY)
     table = cumulative_table(opponent_distribution(m, STRATEGY))
 
     header = (
@@ -112,7 +102,7 @@ def check_invariants(m: int = 3) -> None:
     print("\nInvarianten")
     print("-" * 68)
 
-    joint = joint_distribution(start_state(m), STRATEGY)
+    joint = joint_distribution(initial_state(n_rolls=m), STRATEGY)
     table = cumulative_table(opponent_distribution(m, STRATEGY))
 
     violations = 0
@@ -139,7 +129,7 @@ def show_tie_break_effect(m: int = 3, own_rolls: int = 1) -> None:
     )
     print("-" * 68)
 
-    joint = joint_distribution(start_state(m), STRATEGY)
+    joint = joint_distribution(initial_state(n_rolls=m), STRATEGY)
     table = cumulative_table(opponent_distribution(m, STRATEGY))
 
     deltas = []

@@ -8,7 +8,6 @@ from schocken.core.dice import roll_dice
 from schocken.core.classification import lid_value, is_shock_out
 from schocken.core.state import decide_after_roll, initial_state
 from schocken.core.typedefs import (
-    GameState,
     PublicPlayerState,
     RoundContext,
     TurnResult,

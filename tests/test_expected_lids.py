@@ -21,7 +21,7 @@ from schocken.probability.enumeration import (
     roll_distribution,
 )
 from schocken.engine.game import Game, Player, compare_results
-from schocken.core.state import decide_after_roll
+from schocken.core.state import decide_after_roll, initial_state
 from schocken.strategies.absolute import GreedyAllIn
 from schocken.strategies.optimizer.objectives import (
     ExpectedLidsObjective,
@@ -34,19 +34,12 @@ TOLERANCE = 1e-10
 DICE_OF_RANK = {classify(roll): roll for roll in roll_distribution(3)}
 
 
-def start_state(n_rolls: int) -> GameState:
-    return GameState(
-        held_ones=0,
-        rolls_left=n_rolls,
-        rolls_used=0,
-        visible_state=None,
-        dice_to_roll=3,
-    )
-
-
 @pytest.fixture(scope="module")
 def follower_tables() -> dict[int, dict]:
-    return {m: joint_distribution(start_state(m), GreedyAllIn()) for m in (1, 2, 3)}
+    return {
+        m: joint_distribution(initial_state(n_rolls=m), GreedyAllIn())
+        for m in (1, 2, 3)
+    }
 
 
 # --------------------------------------------------------------------------

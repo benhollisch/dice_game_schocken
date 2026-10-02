@@ -6,19 +6,12 @@ from schocken.probability.analytic import ones_distribution
 from schocken.core.classification import classify
 import schocken.core.state as state_module
 from schocken.strategies.absolute import GreedyAllIn
-from schocken.core.typedefs import GameState
 
 d = roll_distribution(3)
 print(len(d), sum(d.values()))
 
 
-state = GameState(
-    held_ones=0,
-    rolls_left=1,
-    rolls_used=0,
-    visible_state=None,
-    dice_to_roll=3,
-)
+state = state_module.initial_state(n_rolls=1, n_dice=3)
 
 dist = rank_distribution(state, GreedyAllIn())
 print(sum(dist.values()))
@@ -30,14 +23,7 @@ for roll, p in roll_distribution(3).items():
 print(dist == expected)
 
 
-state = GameState(
-    held_ones=0,
-    rolls_left=3,
-    rolls_used=0,
-    visible_state=None,
-    must_continue=False,
-    dice_to_roll=3,
-)
+state = state_module.initial_state(n_rolls=3, n_dice=3)
 
 dist = rank_distribution(state, GreedyAllIn())
 print(dist)
@@ -57,14 +43,7 @@ def next_states_without_conversion(state, roll):
 
 state_module.next_states = next_states_without_conversion
 
-start = GameState(
-    held_ones=0,
-    rolls_left=3,
-    rolls_used=0,
-    visible_state=None,
-    must_continue=False,
-    dice_to_roll=3,
-)
+start = state_module.initial_state(n_rolls=3, n_dice=3)
 
 dist = rank_distribution(start, GreedyAllIn())
 
