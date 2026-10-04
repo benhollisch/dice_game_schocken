@@ -70,7 +70,11 @@ def rank_distribution(
     gewichtet mit ihrer Wahrscheinlichkeit, an Entscheidungsknoten gemäß der
     übergebenen Strategie.
 
-    Die Verteilung gilt für den übergebenen Tischzustand, und ohne Kontext ist sie nur für tischunabhängige Strategien korrekt.
+    Die Verteilung gilt für den übergebenen Tischzustand. Ohne Kontext ist
+    sie nur für tischunabhängige Strategien korrekt.
+
+    Der Cache gilt nur für einen Kontext und darf nicht über Aufrufe mit
+    unterschiedlichen Tischzuständen hinweg wiederverwendet werden.
 
     Args:
         state: Zustand unmittelbar vor dem nächsten Wurf.
@@ -116,7 +120,11 @@ def joint_distribution(
     Im Unterschied zu rank_distribution wird die Wurfzahl nicht wegaggregiert,
     da sie für die Auflösung von Gleichständen benötigt wird.
 
-    Die Verteilung gilt für den übergebenen Tischzustand, und ohne Kontext ist sie nur für tischunabhängige Strategien korrekt.
+    Die Verteilung gilt für den übergebenen Tischzustand. Ohne Kontext ist
+    sie nur für tischunabhängige Strategien korrekt.
+
+    Der Cache gilt nur für einen Kontext und darf nicht über Aufrufe mit
+    unterschiedlichen Tischzuständen hinweg wiederverwendet werden.
 
     Args:
         state: Zustand unmittelbar vor dem nächsten Wurf.
