@@ -10,7 +10,7 @@ from itertools import product
 
 from schocken.core.state import decide_after_roll, initial_state
 from schocken.strategies.base import BaseStrategy
-from schocken.core.typedefs import GameState
+from schocken.core.typedefs import GameState, RoundContext
 from schocken.core.dice import normalize
 from schocken.core.classification import classify
 
@@ -60,6 +60,7 @@ def _cache_key(state: GameState) -> tuple:
 def rank_distribution(
     state: GameState,
     strategy: BaseStrategy,
+    context: RoundContext | None = None,
     cache: dict | None = None,
 ) -> dict[tuple[int, ...], float]:
     """
@@ -69,14 +70,12 @@ def rank_distribution(
     gewichtet mit ihrer Wahrscheinlichkeit, an Entscheidungsknoten gemäß der
     übergebenen Strategie.
 
-    TODO: decide_after_roll wird ohne public_table_state aufgerufen. Für
-    reaktive Strategien liefert die Enumeration dadurch eine Verteilung, die
-    nicht dem tatsächlichen Spielverhalten entspricht. Aktuell liegt es in der
-    Verantwortung des Aufrufers, nur tischunabhängige Politiken zu übergeben.
+    Die Verteilung gilt für den übergebenen Tischzustand, und ohne Kontext ist sie nur für tischunabhängige Strategien korrekt.
 
     Args:
         state: Zustand unmittelbar vor dem nächsten Wurf.
         strategy: Politik die an Entscheidungsknoten angewandt wird.
+        context: Kontext für reaktive Strategien.
         cache: Optionaler Cache für wiederkehrende Teilzustände.
 
     Returns:
@@ -92,12 +91,11 @@ def rank_distribution(
     distribution: dict[tuple[int, ...], float] = defaultdict(float)
 
     for roll, probability in roll_distribution(state["dice_to_roll"]).items():
-        decision = decide_after_roll(state, roll, strategy)
-
+        decision = decide_after_roll(state, roll, strategy, context)
         if decision["action"] == "stop":
             distribution[decision["rank"]] += probability  # type: ignore
         else:
-            sub = rank_distribution(decision["state"], strategy, cache)
+            sub = rank_distribution(decision["state"], strategy, context, cache)
             for rank, p in sub.items():
                 distribution[rank] += probability * p
 
@@ -109,6 +107,7 @@ def rank_distribution(
 def joint_distribution(
     state: GameState,
     strategy: BaseStrategy,
+    context: RoundContext | None = None,
     cache: dict | None = None,
 ) -> dict[tuple[tuple[int, ...], int], float]:
     """
@@ -117,13 +116,12 @@ def joint_distribution(
     Im Unterschied zu rank_distribution wird die Wurfzahl nicht wegaggregiert,
     da sie für die Auflösung von Gleichständen benötigt wird.
 
-    TODO: decide_after_roll wird ohne public_table_state aufgerufen. Für
-    reaktive Strategien entspricht die Verteilung daher nicht dem tatsächlichen
-    Spielverhalten.
+    Die Verteilung gilt für den übergebenen Tischzustand, und ohne Kontext ist sie nur für tischunabhängige Strategien korrekt.
 
     Args:
         state: Zustand unmittelbar vor dem nächsten Wurf.
         strategy: Politik die an Entscheidungsknoten angewandt wird.
+        context: Kontext für reaktive Strategien.
         cache: Optionaler Cache für wiederkehrende Teilzustände.
 
     Returns:
@@ -139,13 +137,13 @@ def joint_distribution(
     distribution: dict[tuple[tuple[int, ...], int], float] = defaultdict(float)
 
     for roll, probability in roll_distribution(state["dice_to_roll"]).items():
-        decision = decide_after_roll(state, roll, strategy)
+        decision = decide_after_roll(state, roll, strategy, context)
 
         if decision["action"] == "stop":
             outcome = (decision["rank"], decision["state"]["rolls_used"])
             distribution[outcome] += probability  # type: ignore
         else:
-            sub = joint_distribution(decision["state"], strategy, cache)
+            sub = joint_distribution(decision["state"], strategy, context, cache)
             for outcome, p in sub.items():
                 distribution[outcome] += probability * p
 
