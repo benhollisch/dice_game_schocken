@@ -19,6 +19,7 @@ players = [
     Player("Lid Optimizer ", OptimalStrategy(objective="expected_lids")),
 ]
 
-results = simulate_games(players=players, n_games=100)
+results = simulate_games(players=players, n_games=10_000)
 print(results)
 print_summary(results)
+print_summary(results, reference="Loss Optimizer")

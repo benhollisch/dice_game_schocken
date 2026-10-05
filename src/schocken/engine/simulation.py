@@ -60,9 +60,11 @@ def simulate_games(players: list[Player], n_games: int = 10) -> dict:
         n_games: Anzahl der zu simulierenden Spiele.
 
     Returns:
-        Dictionary mit Verliereranteilen und durchschnittlicher Rundenanzahl.
+        Dictionary mit Verliereranteilen, durchschnittlicher Rundenanzahl,
+        den Spielernamen und dem Verlierer jedes Spiels in Spielreihenfolge.
     """
     loser_counts: Counter = Counter()
+    losers: list[str] = []
     rounds_per_game = []
     starting_player = 0
 
@@ -81,6 +83,7 @@ def simulate_games(players: list[Player], n_games: int = 10) -> dict:
 
         loser = next(player for player in game.players if player.lids > 0)
         loser_counts[loser.name] += 1
+        losers.append(loser.name)
         rounds_per_game.append(rounds)
 
         starting_player = game.players.index(loser)
@@ -91,4 +94,6 @@ def simulate_games(players: list[Player], n_games: int = 10) -> dict:
             key: loser_counts[key] / n_games for key in sorted(loser_counts)
         },
         "avg_rounds": sum(rounds_per_game) / len(rounds_per_game),
+        "players": [p.name for p in players],
+        "losers": losers,
     }
